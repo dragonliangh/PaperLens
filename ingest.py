@@ -6,20 +6,9 @@
 对外只暴露两样东西：
   - Chunk：一个数据类，描述单个文本块。
   - parse_and_chunk()：唯一对外函数，输入 PDF 路径，输出 Chunk 列表。
-
-设计约定（详见 DESIGN.md）：
-  - 解析库用 pdfplumber（双栏论文抽取顺序比 pypdf 稳）。
-  - 按 400 token 滑窗切块，相邻块重叠 80 token，防止关键句被切断。
-  - 允许跨页，page_start/page_end 记录起止页。
-  - 章节识别不保证成功，识别不到填 ""。
-  - 空 PDF / 扫描件返回空列表，不报错。
 """
-"""PaperLens 第 1 块：PDF 解析 + 分块。
-...
-"""
-import os                       # 用来取文件名 basename
+import os
 # 强制离线：必须在 import transformers 之前设置才生效。
-# 作用：即使将来 TOKENIZER_NAME 误改回 HF 仓库名，也不会尝试联网卡死。
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 import re                       # 用来写章节标题的正则
