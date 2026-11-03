@@ -1,0 +1,8 @@
+pdfplumber==0.11.10
+transformers==5.22.1
+torch==2.15.0
+sentence-transformers==6.2.0
+chromadb==1.5.9
+zhipuai==2.1.5.20250825
+sniffio==1.3.1
+gradio==6.31.0
