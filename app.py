@@ -15,7 +15,7 @@
   - build_app() -> gr.Blocks ：构建并返回界面对象。
 
 【依赖】
-  - gradio ：界面库（6.31.0，支持 Chatbot type="messages"）。
+  - gradio ：界面库（已降级至 5.49.1，兼容魔搭前端环境）。
   - ingest / index_store / qa ：复用前三块的业务逻辑。
 """
 import os
@@ -104,7 +104,8 @@ def build_app() -> gr.Blocks:
 
         status_md = gr.Markdown("尚未上传论文。")
 
-        chatbot = gr.Chatbot(label="对话")
+        # Gradio 5.x 必须显式声明 type="messages" 才能正确渲染字典列表
+        chatbot = gr.Chatbot(label="对话", type="messages")
         history_state = gr.State([])
 
         with gr.Row():
@@ -138,7 +139,7 @@ def build_app() -> gr.Blocks:
 
 
 if __name__ == "__main__":
-    # 【核心逻辑】启动时自动索引 data/sample.pdf（契约 3：应对非持久化磁盘）
+    # 启动时自动索引 data/sample.pdf（应对云端非持久化磁盘）
     print("正在检查并初始化预置论文索引...")
     try:
         default_pdf = "data/sample.pdf"
@@ -152,11 +153,9 @@ if __name__ == "__main__":
         print(f"启动时自动索引失败（不影响应用启动）：{e}")
 
     demo = build_app()
+    # Gradio 5.x 的 SSE 机制本身不会超时，无需设置 timeout
     demo.queue(default_concurrency_limit=1)
 
-    # 【核心逻辑】环境判断：
-    # 魔搭创空间会注入 MODELSCOPE_ENVIRONMENT 环境变量。
-    # 如果在云端，必须监听 0.0.0.0:7860；如果在本地，让 Gradio 自选端口。
     if os.environ.get("MODELSCOPE_ENVIRONMENT"):
         print("检测到魔搭云端环境，启动于 0.0.0.0:7860")
         demo.launch(server_name="0.0.0.0", server_port=7860)
