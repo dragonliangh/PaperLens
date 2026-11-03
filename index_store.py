@@ -26,9 +26,11 @@ from sentence_transformers import SentenceTransformer
 
 from ingest import Chunk
 
+from typing import Any
+
 # 模型本地路径（与第 1 块 tokenizer 同一个目录）。
 # ST 能直接从这个目录加载，因为 ModelScope 下载的是完整的 ST 格式模型。
-MODEL_PATH = r"D:\python\PaperLens\models\bge-small-en-v1.5"
+MODEL_PATH = "./models/bge-small-en-v1.5"
 # Chroma 数据目录，相对项目根目录。
 CHROMA_PATH = "data/chroma"
 COLLECTION_NAME = "papers"
@@ -59,7 +61,9 @@ def _get_model() -> SentenceTransformer:
 
 
 @lru_cache(maxsize=1)
-def _get_client() -> chromadb.PersistentClient:
+def _get_client() -> Any:
+    # 【已知缺陷】chromadb 的类型存根里 PersistentClient 是一个工厂函数，
+    # 但 Pylance 期待一个类，会导致报错。这里用 Any 规避静态检查。
     """Chroma 客户端单例，数据持久化到 CHROMA_PATH。
 
     为什么用单例：

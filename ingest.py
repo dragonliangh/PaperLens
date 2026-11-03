@@ -33,7 +33,7 @@ from transformers import AutoTokenizer  # 从 Hugging Face 加载分词器
 # 为什么不是 "BAAI/bge-small-en-v1.5" 这个 HF 仓库名？
 #   因为当前网络无法稳定访问 HF / hf-mirror，改为提前把文件下载到本地，
 #   从本地目录加载，彻底离线。具体下载过程见 README「离线模型」一节。
-TOKENIZER_NAME = r"D:\python\PaperLens\models\bge-small-en-v1.5"
+TOKENIZER_NAME = "./models/bge-small-en-v1.5"
 
 
 @dataclass
