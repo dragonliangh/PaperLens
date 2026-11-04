@@ -221,3 +221,9 @@
 | # | 变更 | 原因 |
 |---|---|---|
 | C14 | 开启 Gradio `queue()`，将 `zhipuai` 超时从 60s 放宽至 120s | 解决中文提问偶发 `Request timed out` 的问题，确保长耗时推理不中断 |
+| C15 | 依赖版本：降级 `pdfplumber==0.11.8`，锁定 `Pillow==11.3.0`，降级 `gradio==5.49.1` | 解决魔搭云端构建时 Pillow 版本冲突，以及 Gradio 6.x 渲染兼容性问题 |
+| C16 | Dockerfile 单独从 PyTorch CPU 源安装 `torch` | 剥离 Linux 下默认附带的 CUDA 依赖，镜像从 3.35GB 缩减至约 1.1GB |
+| C17 | `qa.py` 加入性能计时日志 | 定位耗时瓶颈，确认后端总耗时仅 7-10 秒，问题在前端渲染 |
+| C18 | `_call()` 增加 `stream=False` 与 `Any` 类型注解 | 消除 Pylance 报错 |
+| C19 | 新增 `rerank.py` 实现 Cross-Encoder 精排，模型选型 `bge-reranker-base` | 解决纯向量检索 top-8 中直接答案（p5）排名靠后的问题。实测重排后摘要（p1）分数跃居 0.89，p5 稳居 top-3。 |
+| C20 | `rerank.py` 强制设置 `batch_size=4`，并加入 `torch.sigmoid` 归一化 | 解决 CPU 环境下默认 batch_size=32 导致的内存 Swap（耗时 25 秒）；并将原始 logits 映射至 0~1 为拒答阈值做准备。 |

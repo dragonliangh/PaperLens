@@ -1,24 +1,26 @@
-"""PaperLens 第 3 块：检索 + 生成 + 引用。
+"""PaperLens 第 3/6 块：检索 + 重排 + 生成 + 引用。
 
 【模块职责】
   把「用户问题」变成「有出处的答案」。内部流程：
-    问题 -> 第 2 块 search() 取 top_k 个 chunk -> 拼 prompt -> 调 GLM-4.7-Flash
-         -> 解析答案里的 [n] 引用标记 -> 返回 RagAnswer(answer, citations, usage)
+    问题 -> 第 2 块 search() 取 top-20 候选 -> 第 6 块 rerank() 精排取 top-4
+         -> 拼 prompt -> 调 GLM-4.7-Flash -> 解析 [n] -> 返回 RagAnswer
 
 【在架构中的位置】
-  第 3 块，是 P0 闭环的核心。
-    - 上游依赖：index_store.search()（第 2 块）提供检索结果。
+  第 3/6 块，是 P0 闭环的核心。
+    - 上游依赖：index_store.search()（第 2 块）提供粗排结果，
+                rerank.rerank()（第 6 块）提供 Cross-Encoder 精排结果。
     - 下游被依赖：第 4 块 Gradio 界面调用本模块的 answer() 展示答案与引用。
     - 第 7 块评估脚本会调用本模块，衡量 Faithfulness 与拒答准确率。
 
 【对外暴露】
-  - answer(query, top_k=8) -> RagAnswer ：唯一主入口。
+  - answer(query, top_k=20, final_k=4) -> RagAnswer ：唯一主入口。
   - RagAnswer / Citation ：返回结构，供上层序列化或展示。
 
 【依赖】
   - zhipuai ：智谱官方 SDK，调 GLM-4.7-Flash。
   - httpx ：用于设置更精细的超时参数（连接超时 + 读取超时）。
-  - index_store ：复用第 2 块的检索能力，本模块不直接碰 Chroma。
+  - index_store ：复用第 2 块的向量检索能力。
+  - rerank ：复用第 6 块的 Cross-Encoder 重排能力。
 """
 import os
 import re
@@ -31,6 +33,7 @@ import httpx
 from zhipuai import ZhipuAI
 
 from index_store import search
+from rerank import rerank  # 第 6 块新增：引入 Cross-Encoder 精排
 
 # ---------------------------------------------------------------------------
 # 模块级常量：集中在这里，避免魔法值散落在函数里。
@@ -144,7 +147,7 @@ def _build_prompt(query: str, results: list) -> tuple[str, str]:
 
     参数：
       query   : 用户原问题（可能是中文或英文，不翻译）。
-      results : search() 返回的 RetrievedChunk 列表，已按相似度降序。
+      results : 经过重排后精选出的 RetrievedChunk 列表（通常是 top-4）。
 
     返回：
       (system_text, user_text)。
@@ -190,11 +193,11 @@ def _build_prompt(query: str, results: list) -> tuple[str, str]:
 
 
 def _parse_citations(answer_text: str, results: list) -> list[Citation]:
-    """解析答案里的 [n] 标记，映射回检索结果。
+    """解析答案里的 [n] 标记，映射回重排后的检索结果。
 
     参数：
       answer_text : LLM 返回的答案文本。
-      results     : 本次检索的 RetrievedChunk 列表（顺序即 [1][2]... 的顺序）。
+      results     : 本次重排后输入的 RetrievedChunk 列表（顺序即 [1][2]... 的顺序）。
 
     返回：
       Citation 列表，按答案中编号首次出现的顺序；无重复。
@@ -211,13 +214,13 @@ def _parse_citations(answer_text: str, results: list) -> list[Citation]:
     # finditer 按出现顺序遍历所有匹配。
     for m in re.finditer(r"\[(\d+)\]", answer_text):
         idx = int(m.group(1))
-        # 【边界】越界编号忽略：LLM 可能标 [9] 但本次只有 8 条。
+        # 【边界】越界编号忽略：LLM 可能标 [9] 但本次只有 4 条。
         if 1 <= idx <= len(results) and idx not in seen:
             seen.add(idx)
             ordered_indices.append(idx)
 
     if not ordered_indices:
-        # 契约 6 降级：解析不到任何编号，返回全部检索结果。
+        # 契约 6 降级：解析不到任何编号，返回全部重排结果。
         return [_to_citation(r) for r in results]
 
     # 编号是 1-based，results 是 0-based，映射时减 1。
@@ -237,30 +240,32 @@ def _is_rate_limit_error(err: Exception) -> bool:
     return any(k in msg for k in keywords)
 
 
-def answer(query: str, top_k: int = 8) -> RagAnswer:
-    """RAG 主入口：检索 + 生成 + 引用。
+def answer(query: str, top_k: int = 20, final_k: int = 4) -> RagAnswer:
+    """RAG 主入口：检索 + 重排 + 生成 + 引用。
 
     参数：
-      query  : 用户问题。
-      top_k  : 检索条数，默认 8。传给 index_store.search()。
+      query   : 用户问题。
+      top_k   : 向量检索的粗排候选数，默认 20。传给 index_store.search()。
+      final_k : 重排后送入 LLM 的段落数，默认 4。传给 rerank.rerank()。
 
     返回：
-      RagAnswer。检索为空时返回拒答文本 + 空引用。
+      RagAnswer。检索为空或重排后为空时返回拒答文本 + 空引用。
 
     错误语义（契约 7）：
       - Key 缺失：_get_client() 抛 ValueError，本函数不捕获。
       - API 调用失败：限流类错误重试一次后仍失败则抛；其他错误直接抛。
-      本函数不吞异常、不包装、不打日志（这里只打性能日志，不打错误堆栈）。
+      本函数不吞异常、不包装、不打错误堆栈日志（只打性能日志）。
 
-    【算法步骤】
-      1. 调 search() 检索 top_k；
-      2. 结果为空 -> 直接返回拒答，不调 LLM；
-      3. 拼 system/user 消息；
-      4. 调 GLM；限流则等 10s 重试一次；
-      5. 解析答案里的 [n] 得到引用；
-      6. 读取 usage（若有）；返回 RagAnswer。
+    【算法步骤（第 6 块修改版）】
+      1. 调 search() 向量检索 top_k（默认 20）个候选；
+      2. 结果为空 -> 直接返回拒答，不调重排和 LLM；
+      3. 调 rerank() 对候选进行 Cross-Encoder 精排，取 final_k（默认 4）个；
+      4. 拼 system/user 消息；
+      5. 调 GLM；限流则等 10s 重试一次；
+      6. 解析答案里的 [n] 得到引用；
+      7. 读取 usage（若有）；返回 RagAnswer。
     """
-    # 步骤 1：检索。注意 search() 内部已处理空 query / 空库，返回 []。
+    # 步骤 1：向量粗排。注意 search() 内部已处理空 query / 空库，返回 []。
     t0 = time.time()
     results = search(query, top_k=top_k)
     print(f"[性能日志] 1. 向量检索耗时: {time.time() - t0:.2f} 秒")
@@ -268,20 +273,31 @@ def answer(query: str, top_k: int = 8) -> RagAnswer:
     # 步骤 2（契约 4）：检索为空 -> 不调 LLM，直接拒答。
     # 【核心逻辑】这是第 7 块阈值拒答的雏形；P0 只处理「结果为空」。
     if not results:
-        print("[性能日志] 检索为空，直接拒答，跳过 LLM。")
+        print("[性能日志] 检索为空，直接拒答，跳过重排与 LLM。")
         return RagAnswer(answer=REFUSAL_TEXT, citations=[], usage=None)
 
-    # 步骤 3：拼 prompt。
+    # 步骤 3（第 6 块核心逻辑）：Cross-Encoder 精排。
+    # 将粗排召回的 top_k 个候选放入 Cross-Encoder 中逐对打分，淘汰语义相关
+    # 但不直接回答问题的噪声，保留得分最高的 final_k 个。
     t1 = time.time()
+    results = rerank(query, results, final_k=final_k)
+    print(f"[性能日志] 2. 重排耗时: {time.time() - t1:.2f} 秒")
+
+    # 边界防御：如果重排后意外为空（理论上不会，除非模型异常），直接拒答。
+    if not results:
+        return RagAnswer(answer=REFUSAL_TEXT, citations=[], usage=None)
+
+    # 步骤 4：拼 prompt。
+    t2 = time.time()
     system_text, user_text = _build_prompt(query, results)
     messages = [
         {"role": "system", "content": system_text},
         {"role": "user", "content": user_text},
     ]
-    print(f"[性能日志] 2. 构建 Prompt 耗时: {time.time() - t1:.2f} 秒")
+    print(f"[性能日志] 3. 构建 Prompt 耗时: {time.time() - t2:.2f} 秒")
 
-    # 步骤 4：调 LLM。把单次调用封成内部函数，便于重试时复用。
-    t2 = time.time()
+    # 步骤 5：调 LLM。把单次调用封成内部函数，便于重试时复用。
+    t3 = time.time()
     client = _get_client()
 
     def _call() -> Any:
@@ -311,16 +327,16 @@ def answer(query: str, top_k: int = 8) -> RagAnswer:
             resp = _call()
         else:
             raise
-            
-    print(f"[性能日志] 3. GLM 接口调用耗时: {time.time() - t2:.2f} 秒")
 
-    # 步骤 5：取答案文本并解析引用。
+    print(f"[性能日志] 4. GLM 接口调用耗时: {time.time() - t3:.2f} 秒")
+
+    # 步骤 6：取答案文本并解析引用。
     # 【边界】content 理论上可能为 None（极端情况），用 or "" 兜底，
     # 避免后续正则对 None 报错；空答案时 _parse_citations 会走降级分支。
     answer_text = resp.choices[0].message.content or ""
     citations = _parse_citations(answer_text, results)
 
-    # 步骤 6：读取 usage。P0 能读到就填，读不到填 None（契约 3 + 设计决策 8）。
+    # 步骤 7：读取 usage。P0 能读到就填，读不到填 None。
     usage = None
     resp_usage = getattr(resp, "usage", None)
     if resp_usage is not None:
@@ -330,5 +346,5 @@ def answer(query: str, top_k: int = 8) -> RagAnswer:
             "total_tokens": getattr(resp_usage, "total_tokens", None),
         }
 
-    print(f"[性能日志] 4. 引用解析与返回总耗时: {time.time() - t0:.2f} 秒")
+    print(f"[性能日志] 5. 引用解析与返回总耗时: {time.time() - t0:.2f} 秒")
     return RagAnswer(answer=answer_text, citations=citations, usage=usage)
