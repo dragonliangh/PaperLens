@@ -38,7 +38,7 @@ from index_store import search
 MODEL_NAME = "glm-4.7-flash"   # 契约：智谱免费模型
 TEMPERATURE = 0.1              # 契约：低温度，减少胡编
 MAX_TOKENS = 1024              # 契约：答案通常一两百字，1024 足够
-# 【修改点】从 60 秒放宽到 120 秒。GLM 免费档在高峰期生成中文长句时，
+# 从 60 秒放宽到 120 秒。GLM 免费档在高峰期生成中文长句时，
 # 可能会超过 60 秒，导致 httpx.ReadTimeout。
 TIMEOUT_SECONDS = 120          # 契约：单次调用超时 120s
 RETRY_DELAY_SECONDS = 10       # 契约：遇限流等 10s 重试一次
@@ -98,7 +98,7 @@ def _get_client() -> ZhipuAI:
       ZHIPU_API_KEY 未设置时，不抛 KeyError，而是抛带明确提示的 ValueError，
       方便上层直接展示给用户「请先配置 API Key」。
 
-    【修改点】超时策略：
+    超时策略：
       使用 httpx.Timeout 分别控制连接和读取。
       - connect=10.0：建立 TCP 连接最多等 10 秒，网络断了快速报错。
       - timeout=120.0：等待服务器返回内容的读取超时设为 120 秒。
@@ -250,7 +250,7 @@ def answer(query: str, top_k: int = 8) -> RagAnswer:
     错误语义（契约 7）：
       - Key 缺失：_get_client() 抛 ValueError，本函数不捕获。
       - API 调用失败：限流类错误重试一次后仍失败则抛；其他错误直接抛。
-      本函数不吞异常、不包装、不打日志。
+      本函数不吞异常、不包装、不打日志（这里只打性能日志，不打错误堆栈）。
 
     【算法步骤】
       1. 调 search() 检索 top_k；
@@ -261,21 +261,27 @@ def answer(query: str, top_k: int = 8) -> RagAnswer:
       6. 读取 usage（若有）；返回 RagAnswer。
     """
     # 步骤 1：检索。注意 search() 内部已处理空 query / 空库，返回 []。
+    t0 = time.time()
     results = search(query, top_k=top_k)
+    print(f"[性能日志] 1. 向量检索耗时: {time.time() - t0:.2f} 秒")
 
     # 步骤 2（契约 4）：检索为空 -> 不调 LLM，直接拒答。
     # 【核心逻辑】这是第 7 块阈值拒答的雏形；P0 只处理「结果为空」。
     if not results:
+        print("[性能日志] 检索为空，直接拒答，跳过 LLM。")
         return RagAnswer(answer=REFUSAL_TEXT, citations=[], usage=None)
 
     # 步骤 3：拼 prompt。
+    t1 = time.time()
     system_text, user_text = _build_prompt(query, results)
     messages = [
         {"role": "system", "content": system_text},
         {"role": "user", "content": user_text},
     ]
+    print(f"[性能日志] 2. 构建 Prompt 耗时: {time.time() - t1:.2f} 秒")
 
     # 步骤 4：调 LLM。把单次调用封成内部函数，便于重试时复用。
+    t2 = time.time()
     client = _get_client()
 
     def _call() -> Any:
@@ -299,11 +305,14 @@ def answer(query: str, top_k: int = 8) -> RagAnswer:
     except Exception as e:
         # 契约 1：限流类错误等 10s 重试一次；其他错误直接抛。
         if _is_rate_limit_error(e):
+            print(f"[性能日志] 触发限流，等待 {RETRY_DELAY_SECONDS} 秒后重试...")
             time.sleep(RETRY_DELAY_SECONDS)
             # 【边界】第二次调用不再捕获：仍失败则异常向上抛（契约 7）。
             resp = _call()
         else:
             raise
+            
+    print(f"[性能日志] 3. GLM 接口调用耗时: {time.time() - t2:.2f} 秒")
 
     # 步骤 5：取答案文本并解析引用。
     # 【边界】content 理论上可能为 None（极端情况），用 or "" 兜底，
@@ -321,4 +330,5 @@ def answer(query: str, top_k: int = 8) -> RagAnswer:
             "total_tokens": getattr(resp_usage, "total_tokens", None),
         }
 
+    print(f"[性能日志] 4. 引用解析与返回总耗时: {time.time() - t0:.2f} 秒")
     return RagAnswer(answer=answer_text, citations=citations, usage=usage)
