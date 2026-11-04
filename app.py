@@ -22,7 +22,7 @@ import os
 import gradio as gr
 
 from ingest import parse_and_chunk
-from index_store import build_index
+from index_store import build_index, clear_index
 from qa import answer
 
 # ---------------------------------------------------------------------------
@@ -139,9 +139,11 @@ def build_app() -> gr.Blocks:
 
 
 if __name__ == "__main__":
-    # 启动时自动索引 data/sample.pdf（应对云端非持久化磁盘）
-    print("正在检查并初始化预置论文索引...")
+    # 【修复】启动时强制清空云端可能损坏或残留的旧索引数据。
+    print("正在清理并初始化预置论文索引...")
     try:
+        clear_index()
+
         default_pdf = "data/sample.pdf"
         if os.path.exists(default_pdf):
             chunks = parse_and_chunk(default_pdf)

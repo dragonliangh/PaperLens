@@ -56,8 +56,13 @@ def _get_model() -> SentenceTransformer:
     性能隐患：
       首次加载约 130MB 模型，需要几秒到十几秒；之后走 lru_cache 复用。
       如果 MODEL_PATH 下文件缺失，这里会抛异常（契约：不吞）。
+
+    【云端修复】强制使用 pytorch_model.bin：
+      云端 Git LFS 拉取的 model.safetensors 可能存在文件头损坏
+      (Error while deserializing header: header too large)，
+      通过 model_kwargs 禁用 safetensors，强制回退到 .bin 权重。
     """
-    return SentenceTransformer(MODEL_PATH)
+    return SentenceTransformer(MODEL_PATH, model_kwargs={"use_safetensors": False})
 
 
 @lru_cache(maxsize=1)

@@ -46,12 +46,13 @@ def _get_model() -> CrossEncoder:
     性能隐患 / 假设：
       假设 MODEL_PATH 下的文件完整（config.json, model.safetensors 等）。
       若文件缺失，这里会抛异常，按契约不吞异常。
+
+    【云端修复】强制使用 pytorch_model.bin：
+      云端 Git LFS 拉取的 model.safetensors 可能存在文件头损坏
+      (Error while deserializing header: header too large)，
+      通过 model_kwargs 禁用 safetensors，强制回退到 .bin 权重。
     """
-    # 初始化 CrossEncoder。
-    # 注意：不同版本的 sentence-transformers 对 activation_fn 的支持不同。
-    # 为了最大兼容性，这里不在构造函数传入 activation_fn，
-    # 而是在 predict 之后手动做 sigmoid 归一化（见 rerank 函数）。
-    return CrossEncoder(MODEL_PATH)
+    return CrossEncoder(MODEL_PATH, model_kwargs={"use_safetensors": False})
 
 
 def rerank(query: str, candidates: list[RetrievedChunk], final_k: int = 4) -> list[RetrievedChunk]:
