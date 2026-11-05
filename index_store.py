@@ -13,32 +13,9 @@
   - 幂等：同一文档重复建索引，先删旧数据再写入。
 """
 import os
-# 【关键补丁】PyTorch 2.6+ 默认 weights_only=True，会拒绝加载 .bin 权重中的非张量对象。
-# 设置此环境变量强制关闭 weights_only，必须放在 import torch / transformers 之前。
-os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
+# 强制离线：必须在 import sentence_transformers 之前设置才生效。
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
-# =============================================================================
-# 【底层强拦截】绕过 PyTorch 2.6+ 的安全限制
-# 因为 sentence-transformers 内部可能直接调用 torch.serialization.load
-# 必须在 import sentence_transformers 之前拦截，才能确保 .bin 权重被成功加载。
-# =============================================================================
-import torch
-import torch.serialization
-
-_original_torch_load = torch.load
-def _patched_torch_load(*args, **kwargs):
-    kwargs["weights_only"] = False
-    return _original_torch_load(*args, **kwargs)
-torch.load = _patched_torch_load
-
-_original_serialization_load = torch.serialization.load
-def _patched_serialization_load(*args, **kwargs):
-    kwargs["weights_only"] = False
-    return _original_serialization_load(*args, **kwargs)
-torch.serialization.load = _patched_serialization_load
-# =============================================================================
 
 from dataclasses import dataclass
 from functools import lru_cache
@@ -52,7 +29,6 @@ from ingest import Chunk
 from typing import Any
 
 # 模型本地路径（与第 1 块 tokenizer 同一个目录）。
-# ST 能直接从这个目录加载，因为 ModelScope 下载的是完整的 ST 格式模型。
 MODEL_PATH = "./models/bge-small-en-v1.5"
 # Chroma 数据目录，相对项目根目录。
 CHROMA_PATH = "data/chroma"
@@ -76,16 +52,14 @@ class RetrievedChunk:
 def _get_model() -> SentenceTransformer:
     """加载并缓存嵌入模型，进程内只加载一次。
 
-    性能隐患：
-      首次加载约 130MB 模型，需要几秒到十几秒；之后走 lru_cache 复用。
-      如果 MODEL_PATH 下文件缺失，这里会抛异常（契约：不吞）。
-
-    【云端修复】强制使用 pytorch_model.bin：
-      云端 Git LFS 拉取的 model.safetensors 可能存在文件头损坏
-      (Error while deserializing header: header too large)，
-      通过 model_kwargs 禁用 safetensors，强制回退到 .bin 权重。
+    【历史坑位说明】
+      早期云端 .safetensors 文件因 Git LFS 传输损坏，报 header too large，
+      因此曾强制 use_safetensors=False 走 .bin，又触发 PyTorch 2.6+ 的
+      weights_only 限制。
+      最终方案：在本地运行 test_final.py 重新生成干净的 .safetensors 后推送，
+      云端直接按默认路径加载 safetensors，完全不碰 torch.load，根除问题。
     """
-    return SentenceTransformer(MODEL_PATH, model_kwargs={"use_safetensors": False})
+    return SentenceTransformer(MODEL_PATH)
 
 
 @lru_cache(maxsize=1)

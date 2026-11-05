@@ -8,30 +8,9 @@
   - parse_and_chunk()：唯一对外函数，输入 PDF 路径，输出 Chunk 列表。
 """
 import os
-# 【关键补丁】PyTorch 2.6+ 默认 weights_only=True，会拒绝加载 .bin 权重中的非张量对象。
-# 设置此环境变量强制关闭 weights_only，必须放在 import torch / transformers 之前。
-os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
+# 强制离线：必须在 import transformers 之前设置才生效。
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
-# =============================================================================
-# 【底层强拦截】统一全局环境，防止其他库隐式触发加载时崩溃。
-# =============================================================================
-import torch
-import torch.serialization
-
-_original_torch_load = torch.load
-def _patched_torch_load(*args, **kwargs):
-    kwargs["weights_only"] = False
-    return _original_torch_load(*args, **kwargs)
-torch.load = _patched_torch_load
-
-_original_serialization_load = torch.serialization.load
-def _patched_serialization_load(*args, **kwargs):
-    kwargs["weights_only"] = False
-    return _original_serialization_load(*args, **kwargs)
-torch.serialization.load = _patched_serialization_load
-# =============================================================================
 
 import re                       # 用来写章节标题的正则
 from dataclasses import dataclass   # 用 dataclass 定义 Chunk，字段有名字、可读性好
@@ -40,10 +19,7 @@ from functools import lru_cache     # 缓存 tokenizer，避免重复加载
 import pdfplumber               # PDF 解析库
 from transformers import AutoTokenizer  # 从 Hugging Face 加载分词器
 
-# tokenizer 的本地路径。
-# 为什么不是 "BAAI/bge-small-en-v1.5" 这个 HF 仓库名？
-#   因为当前网络无法稳定访问 HF / hf-mirror，改为提前把文件下载到本地，
-#   从本地目录加载，彻底离线。具体下载过程见 README「离线模型」一节。
+# tokenizer 的本地路径（与嵌入模型在同一个目录）。
 TOKENIZER_NAME = "./models/bge-small-en-v1.5"
 
 
