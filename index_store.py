@@ -13,15 +13,9 @@
   - 幂等：同一文档重复建索引，先删旧数据再写入。
 """
 import os
-# 强制离线：必须在 import sentence_transformers 之前设置才生效。
 # 【关键补丁】PyTorch 2.6+ 默认 weights_only=True，会拒绝加载 .bin 权重中的非张量对象。
-import torch as _torch
-_orig_torch_load = _torch.load
-def _patched_torch_load(*args, **kwargs):
-    kwargs.setdefault("weights_only", False)
-    return _orig_torch_load(*args, **kwargs)
-_torch.load = _patched_torch_load
-
+# 设置此环境变量强制关闭 weights_only，必须放在 import torch / transformers 之前。
+os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
@@ -31,7 +25,9 @@ from pathlib import Path
 
 import chromadb
 from sentence_transformers import SentenceTransformer
+
 from ingest import Chunk
+
 from typing import Any
 
 # 模型本地路径（与第 1 块 tokenizer 同一个目录）。
