@@ -27,26 +27,8 @@ os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
-# =============================================================================
-# 【底层强拦截】统一全局环境，确保 CrossEncoder 加载 .bin 时不被拦截。
-# =============================================================================
-import torch
-import torch.serialization
-
-_original_torch_load = torch.load
-def _patched_torch_load(*args, **kwargs):
-    kwargs["weights_only"] = False
-    return _original_torch_load(*args, **kwargs)
-torch.load = _patched_torch_load
-
-_original_serialization_load = torch.serialization.load
-def _patched_serialization_load(*args, **kwargs):
-    kwargs["weights_only"] = False
-    return _original_serialization_load(*args, **kwargs)
-torch.serialization.load = _patched_serialization_load
-# =============================================================================
-
 from functools import lru_cache
+import torch
 from sentence_transformers import CrossEncoder
 
 from index_store import RetrievedChunk
