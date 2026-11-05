@@ -8,12 +8,18 @@
   - parse_and_chunk()：唯一对外函数，输入 PDF 路径，输出 Chunk 列表。
 """
 import os
+# 强制离线：必须在 import transformers 之前设置才生效。
 # 【关键补丁】PyTorch 2.6+ 默认 weights_only=True，会拒绝加载 .bin 权重中的非张量对象。
-# 设置此环境变量强制关闭 weights_only，必须放在 import torch / transformers 之前。
-os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
+# 必须在 import transformers 之前 monkey-patch torch.load，强制 weights_only=False。
+import torch as _torch
+_orig_torch_load = _torch.load
+def _patched_torch_load(*args, **kwargs):
+    kwargs.setdefault("weights_only", False)
+    return _orig_torch_load(*args, **kwargs)
+_torch.load = _patched_torch_load
+
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
 import re                       # 用来写章节标题的正则
 from dataclasses import dataclass   # 用 dataclass 定义 Chunk，字段有名字、可读性好
 from functools import lru_cache     # 缓存 tokenizer，避免重复加载
