@@ -14,25 +14,6 @@ os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
-# =============================================================================
-# 【底层强拦截】统一全局环境，防止其他库隐式触发加载时崩溃。
-# =============================================================================
-import torch
-import torch.serialization
-
-_original_torch_load = torch.load
-def _patched_torch_load(*args, **kwargs):
-    kwargs["weights_only"] = False
-    return _original_torch_load(*args, **kwargs)
-torch.load = _patched_torch_load
-
-_original_serialization_load = torch.serialization.load
-def _patched_serialization_load(*args, **kwargs):
-    kwargs["weights_only"] = False
-    return _original_serialization_load(*args, **kwargs)
-torch.serialization.load = _patched_serialization_load
-# =============================================================================
-
 import re                       # 用来写章节标题的正则
 from dataclasses import dataclass   # 用 dataclass 定义 Chunk，字段有名字、可读性好
 from functools import lru_cache     # 缓存 tokenizer，避免重复加载
