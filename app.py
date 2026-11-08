@@ -140,6 +140,18 @@ def build_app() -> gr.Blocks:
 
 
 if __name__ == "__main__":
+    # 【新增 / 性能优化】通过魔搭内网极速下载模型
+    # 将 1.2GB 的模型下载成本转移到服务启动阶段（约 10-20 秒），
+    # 避免用户第一次提问时苦等 120 秒。
+    print("正在检查模型完整性并下载（利用魔搭内网，极速）...")
+    try:
+        from modelscope import snapshot_download
+        snapshot_download('BAAI/bge-small-en-v1.5', local_dir='./models/bge-small-en-v1.5')
+        snapshot_download('BAAI/bge-reranker-base', local_dir='./models/bge-reranker-base')
+        print("模型文件已就绪。")
+    except Exception as e:
+        print(f"模型下载失败，程序可能无法正常启动：{e}")
+
     # 【修复】启动时强制清空云端可能损坏或残留的旧索引数据。
     print("正在清理并初始化预置论文索引...")
     try:

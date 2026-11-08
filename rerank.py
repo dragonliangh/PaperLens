@@ -22,15 +22,6 @@
   - torch ：用于强制类型转换和分数归一化（Sigmoid）。
 """
 import os
-# 强制离线：必须在 import sentence_transformers 之前设置才生效。
-# 【关键补丁】PyTorch 2.6+ 默认 weights_only=True，会拒绝加载 .bin 权重中的非张量对象。
-import torch as _torch
-_orig_torch_load = _torch.load
-def _patched_torch_load(*args, **kwargs):
-    kwargs.setdefault("weights_only", False)
-    return _orig_torch_load(*args, **kwargs)
-_torch.load = _patched_torch_load
-
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
@@ -56,12 +47,11 @@ def _get_model() -> CrossEncoder:
       假设 MODEL_PATH 下的文件完整（config.json, model.safetensors 等）。
       若文件缺失，这里会抛异常，按契约不吞异常。
 
-    【云端修复】强制使用 pytorch_model.bin：
-      云端 Git LFS 拉取的 model.safetensors 可能存在文件头损坏
-      (Error while deserializing header: header too large)，
-      通过 model_kwargs 禁用 safetensors，强制回退到 .bin 权重。
+    【云端修复】
+      由于云端在启动时已通过 modelscope 下载了完整的 .safetensors 文件，
+      这里直接使用默认的 safetensors 加载，既快又安全。
     """
-    return CrossEncoder(MODEL_PATH, model_kwargs={"use_safetensors": False})
+    return CrossEncoder(MODEL_PATH)
 
 
 def warmup() -> None:
