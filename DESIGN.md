@@ -158,12 +158,13 @@
 - 端点：`https://open.bigmodel.cn/api/paas/v4/`（OpenAI SDK 兼容格式）。
 - API Key：从环境变量 `ZHIPU_API_KEY` 读取，不进代码。
 - 调用方式：串行，绝不并发（免费档并发限制为 1）。
-- 超时：单次调用 60 秒。
+- 超时：单次调用 60 秒（第 5 块调整为 120 秒，见 C14）。
 - 重试：遇限流/过载（1302/1305/429）等 10 秒重试一次；仍失败则抛异常。不写复杂退避算法。
 
 **接口**
 - `answer(query: str, top_k: int = 8) -> RagAnswer`
 - 内部调用 `index_store.search()`，不感知检索细节。
+- 第 6 块修改：`top_k` 默认值改为 20，并增加 `final_k=4` 参数（见第 6 块契约）。
 
 **输出**
 - `RagAnswer(answer, citations, usage)`：
@@ -215,15 +216,285 @@
 |---|---|---|
 | C9 | 已知限制新增：LLM 引用可能错位（机制正常，标注不精确） | 9f 人工检查发现，记录为 RAG 已知问题，由第 7 块 Faithfulness 量化 |
 | C10 | `_call()` 增加 `stream=False` 与返回类型注解 `-> Any` | zhipuai 类型 stub 未按 `stream` 重载，Pylance 误报 `choices` 未知属性；运行时行为经 5 passed 验证不变 |
+
+---
+
+## 第 4 块：Gradio 界面
+
+### 契约（已确认）
+
+**技术选型**
+- 界面库：Gradio（最终锁定 5.49.1，原因见 C15）。
+- P0 不做：流式输出、异步、多用户隔离、自定义 CSS。
+
+**界面组成**
+- 上传区：`gr.File`（只收 `.pdf`）+「上传并建索引」按钮。
+- 状态区：`gr.Markdown`，显示索引结果或错误。
+- 聊天区：`gr.Chatbot`（Gradio 5.x 需显式 `type="messages"`）。
+- 输入区：`gr.Textbox` +「发送」按钮。
+- 引用区：`gr.Markdown`。
+
+**上传行为**
+- 上传成功后清空聊天历史和引用区，状态区提示「已切换论文，对话已重置」。
+
+**提问行为**
+- 异常时错误显示在聊天区，页面不崩。
+
+**接口**
+- `build_app() -> gr.Blocks`
+
+**验收标准**
+- 12a–12g（启动、界面组成、建索引、问答、空输入、异常提示、引用格式）。
+
+### 设计决策（摘要）
+
+| # | 决策 | 原因 |
+|---|---|---|
+| 1 | 单文件 `app.py`，三个内部回调 | 与前 3 块同风格，内聚 |
+| 2 | 上下堆叠布局 | 窄屏不挤压 |
+| 3 | `gr.State` 存 `list[dict]`，`type="messages"` | Gradio 新格式 |
+| 4 | 上传后清空历史 | 避免「引用还是旧论文、状态说新论文」的不一致 |
+| 5 | 异常放聊天区 / 状态区 | 用户视线焦点 |
+
+### 变更记录
+
+| # | 变更 | 原因 |
+|---|---|---|
 | C11 | 决策 3 适配 Gradio 6.x：移除 `Chatbot(type="messages")` 参数 | Gradio 6.0 起 `type` 参数被移除，messages 格式成为唯一默认格式 |
 | C12 | 已知限制新增：多用户共存于同一 Collection、上传文件不持久、无流式输出、消息旁显示耗时 | 第 4 块验收时确认的 P0 边界 |
-| C13 | 已知限制新增：Gradio 6.x 的 `processing | x/y s` 进度指示器 | 验收截图确认，属官方 UI 特性，无需改代码 |
+| C13 | 已知限制新增：Gradio 6.x 的 `processing \| x/y s` 进度指示器 | 验收截图确认，属官方 UI 特性，无需改代码 |
+
+---
+
+## 第 5 块：Docker 化 + 魔搭部署
+
+### 契约（已确认）
+
+**平台约束**
+- 魔搭创空间 Docker SDK，监听 7860，`0.0.0.0`。
+- `ms_deploy.json` 声明 `{"sdk": "docker", "app_port": 7860}`。
+
+**模型与索引**
+- 模型随镜像打包，启动时不下载。
+- 启动时 `clear_index()` 清旧数据，再自动索引 `data/sample.pdf`。
+
+**依赖**
+- Dockerfile 单独从 PyTorch CPU 源安装 `torch`（剥离 CUDA，镜像从 3.35GB 降到 1.1GB）。
+- `pdfplumber==0.11.8` + `Pillow==11.3.0` + `gradio==5.49.1`（解决 Pillow 冲突）。
+
+**验收标准**
+- 13a–13f（Running、界面、自动索引、冷启动、上传新 PDF、Secrets 配置）。
+
+### 设计决策（摘要）
+
+| # | 决策 | 原因 |
+|---|---|---|
+| 1 | `ms_deploy.json` 显式声明 SDK 和端口 | 魔搭必需 |
+| 2 | `python:3.13-slim` + 补 `build-essential` / `libgomp1` | 体积小，且够 PyTorch 用 |
+| 3 | 端口三处对齐（Dockerfile EXPOSE、ms_deploy app_port、app.py launch） | 避免魔搭反复重定向 |
+| 4 | `.dockerignore` 排除 `.venv` / `__pycache__` / `data/chroma` | 减小镜像 |
+| 5 | `torch` 单独从 CPU 源安装 | 剥离 CUDA，体积从 3.35GB → 1.1GB |
+
+### 变更记录
+
 | # | 变更 | 原因 |
 |---|---|---|
 | C14 | 开启 Gradio `queue()`，将 `zhipuai` 超时从 60s 放宽至 120s | 解决中文提问偶发 `Request timed out` 的问题，确保长耗时推理不中断 |
 | C15 | 依赖版本：降级 `pdfplumber==0.11.8`，锁定 `Pillow==11.3.0`，降级 `gradio==5.49.1` | 解决魔搭云端构建时 Pillow 版本冲突，以及 Gradio 6.x 渲染兼容性问题 |
 | C16 | Dockerfile 单独从 PyTorch CPU 源安装 `torch` | 剥离 Linux 下默认附带的 CUDA 依赖，镜像从 3.35GB 缩减至约 1.1GB |
 | C17 | `qa.py` 加入性能计时日志 | 定位耗时瓶颈，确认后端总耗时仅 7-10 秒，问题在前端渲染 |
+
+---
+
+## 第 6 块：Cross-Encoder 精排
+
+### 契约（已确认）
+
+**模型**
+- `BAAI/bge-reranker-base`（中英双语，278M 参数）。
+- 放弃 `ms-marco-MiniLM-L-6-v2`：纯英文，中文跨语言场景不适用。
+
+**参数**
+- 粗排 `top_k=20`，精排 `final_k=4`。
+- 可覆盖。
+
+**接口**
+- `rerank(query, candidates, final_k=4) -> list[RetrievedChunk]`
+- 返回的 `score` 字段替换为 Cross-Encoder 的 0~1 相关性分数，**不再是余弦相似度**。
+
+**`qa.answer()` 流程**
+- 改为 `search(top_k=20)` → `rerank(final_k=4)` → 拼 prompt。对外签名不变。
+
+**验收标准**
+- 14a–14e（返回 ≤ final_k、p5 进 top-4、分数 0~1、端到端可用、耗时 ≤ 2 秒）。
+
+### 设计决策（摘要）
+
+| # | 决策 | 原因 | 放弃的替代 / 代价 |
+|---|---|---|---|
+| 1 | `sentence-transformers` 的 `CrossEncoder` | 与 SentenceTransformer 同库 | 手写 transformers 加载：代码量大 |
+| 2 | `@lru_cache` 单例 | 模型 1.1GB，重复加载延迟爆炸 | 每次 new：延迟几秒 |
+| 3 | sigmoid 归一化到 0~1 | 第 7 块阈值需要 0~1 量纲 | 保留 logits：跨模型不可比 |
+| 4 | 单文件 `rerank.py` | 与前三块同风格 | 拆包：过度设计 |
+| 5 | `final_k` 截断在 `rerank` 内部 | 调用方不需要写切片 | 调用方截断：易忘 |
+| 6 | `batch_size=4` | CPU 内存扛不住 32（实测 25 秒 → 1 秒） | 默认 32：内存 Swap |
+
+### 变更记录
+
+| # | 变更 | 原因 |
+|---|---|---|
 | C18 | `_call()` 增加 `stream=False` 与 `Any` 类型注解 | 消除 Pylance 报错 |
-| C19 | 新增 `rerank.py` 实现 Cross-Encoder 精排，模型选型 `bge-reranker-base` | 解决纯向量检索 top-8 中直接答案（p5）排名靠后的问题。实测重排后摘要（p1）分数跃居 0.89，p5 稳居 top-3。 |
-| C20 | `rerank.py` 强制设置 `batch_size=4`，并加入 `torch.sigmoid` 归一化 | 解决 CPU 环境下默认 batch_size=32 导致的内存 Swap（耗时 25 秒）；并将原始 logits 映射至 0~1 为拒答阈值做准备。 |
+| C19 | 新增 `rerank.py` 实现 Cross-Encoder 精排，模型选型 `bge-reranker-base` | 纯向量检索 top-8 仅 1 条直接含答案，p5 排第 3，需重排 |
+| C20 | `rerank.py` 强制设置 `batch_size=4`，并加入 `torch.sigmoid` 归一化 | CPU 内存 Swap 问题 + 第 7 块阈值量纲 |
+| C21 | 本地重生成干净的 `.safetensors` 覆盖云端损坏文件 | 云端曾出现 `.safetensors` header 损坏 + `.bin` 触发 PyTorch 2.6 `weights_only` 双重问题。safetensors 是纯张量格式，加载时不走 `torch.load`，从根本上绕开安全限制 |
+| C22 | 移除所有针对 `torch.load` 的 monkey-patch 和 `use_safetensors=False` 参数 | 模型修复后不再需要拦截，恢复干净代码便于维护 |
+
+---
+
+## 第 7 块：评估脚本 + 拒答机制
+
+### 契约（已确认）
+
+**评估集 `eval_set.json`**
+- 规模：140 条（英文 70 + 中文 70，id 严格 `001-070` 连续，中英一一对应）。
+- 可答题：每种语言 50 道，`gold_page` 人工标注，`gold_keywords` 为答案中必须包含的关键词。
+- 不可答题：每种语言 20 道，按 **2:2:1** 结构——8 道 unrelated（完全无关）、8 道 semi_related（半相关）、4 道 counterfactual（反事实）。
+- 中文题：与英文题语义严格对应，`gold_page` / `gold_keywords` 与英文完全一致（**keywords 用英文原词**，因为检索池是英文原文）。
+
+**指标口径**
+- 粗排 Recall@5：`search()` 的 top-20 中，前 5 是否命中 `gold_page`。
+- 粗排 MRR@20：`search()` 的 top-20 中，第一个命中的排名倒数。
+- 精排 Recall@4：`rerank()` 的 top-4 中，前 4 是否命中。
+- 精排 MRR@4：`rerank()` 的 top-4 中，第一个命中的排名倒数。
+- 命中判定：`gold_page ∈ [page_start, page_end]`（区间判定，容忍跨页）。
+- 精排指标分母：`n_fine_scored`（有精排结果的题数），不是可答题总数。
+- 拒答准确率：不可答题中，`top_score < threshold` 的比例。
+- 误拒率：可答题中，`top_score < threshold` 的比例。
+- **中英文分开统计，不做综合平均。**
+
+**阈值**
+- 独立 `thresholds.json`，格式 `{"reject": {"default": 0.3, "en": 0.3, "zh": 0.18}}`。
+- 缺失抛异常，避免用默认值悄悄跑错。
+- `qa.py` 用中文字符正则检测 query 语言，按语言选阈值，缺 lang 时回退 `default`。
+
+**拒答逻辑**
+- `qa.answer()` 在重排后、拼 prompt 前判断：`results[0].score < threshold` → 返回 `REFUSAL_TEXT`，不调 LLM。
+
+**诊断项**
+- `coarse_recall_at_20`：粗排天花板。
+- `fine_recall_at_20_gold_given`：粗排 top-20 命中后，精排 top-4 保住的比例。
+- `false_reject_rate`：可答题被误拒的比例。
+- `n_fine_scored`：精排有效题数。
+- `coarse_rank_histogram`：粗排命中排名直方图。
+
+**接口**
+- `evaluate.py`：`main()` 跑完整评估，打印表格 + 写 `eval_report.json`。
+
+**验收标准**
+- 15a `eval_set.json` 140 条，id 连续。
+- 15b `evaluate.py` 跑完不报错，输出表格 + `eval_report.json`。
+- 15c en / zh 各自指标都有数字。
+- 15d 阈值从 `thresholds.json` 读，缺失抛异常。
+- 15e 拒答准确率按 category 细分。
+
+### 设计决策（9 条）
+
+| # | 决策 | 原因 | 放弃的替代 / 代价 |
+|---|---|---|---|
+| 1 | 扁平列表 + id 前缀区分语言 | 遍历方便，中英对照一目了然 | 按语言拆文件：多一次 IO + 15 行合并逻辑 |
+| 2 | 区间判定命中 | 容忍跨页，避免 Recall 虚低 | 精确匹配 page_start：跨页 chunk（10–15%）判未命中，Recall 虚低 10% |
+| 3 | MRR 未命中记 0 | 标准定义，可复现 | 跳过未命中：MRR 虚高 15–20% |
+| 4 | 评估脚本只调 `search` + `rerank`，不调 `qa.answer` | 快、不消耗 API、逻辑透明 | 端到端：120 题 × 8 秒 ≈ 16 分钟，且触发 429 |
+| 5 | 阈值人工观察分布后定 | 60 题样本下 ROC 无统计意义 | `sklearn` 算 ROC：多 0.5 人天，60 题上过拟合 |
+| 6 | `REFUSAL_THRESHOLD` 初始占位 0.3，评估后调 | 先给个中间值避免报错 | 初始 0 或 1：无参考意义 |
+| 7 | `eval_report.json` 含时间戳、阈值、分布、诊断项 | 回归对比、阈值调整不用重跑 | 只输出四个百分比：看不出「为什么变了」 |
+| 8 | 单文件 `evaluate.py`，五函数 | 与项目同风格，内聚 | 拆 `evaluation/` 包：当前规模过度设计 |
+| 9 | 不新增依赖 | 指标计算是纯数学 | 引入 `sklearn`：30MB 依赖，与决策 5 冲突 |
+
+### 变更记录
+
+| # | 变更 | 原因 |
+|---|---|---|
+| C23 | 评估集规模从 120 条扩到 140 条（可答 48→50，不可答 12→20） | 原 48+12 的除不尽问题；新方案 50+20 除尽，且不可答题按 2:2:1 分配为 8+8+4 |
+| C24 | `en_012` 换题 | 原题 keywords 全是单字母，任何页都能命中，MRR 无意义；换成 `How does LoRA's number of trainable parameters scale with the rank r?`（gold_page=4，keywords `["linear", "r"]`） |
+| C25 | `en_021` gold_page 9→10、`en_041` gold_page 5→4 | 结论句实际在 Section 7.1（page 10）；"memory and storage" 的概括在 Section 4.2（page 4） |
+| C26 | 中文题 `gold_keywords` 统一用英文原词 | 中文题检索的是英文原文，keywords 是「在检索结果里找什么」的锚点。用中文译词在英文原文里 100% 匹配失败，中文指标失真约 2% |
+| C27 | `thresholds.json` 从单值改为按语言分设（en=0.3, zh=0.18） | 中文误拒率 42% 过高，原因是 BGE 单语模型跨语言匹配分数天然偏低。分语言设阈值后误拒率降到 34%，拒答准确率保持在 0.70 |
+| C28 | 阈值从 0.15 回调到 0.18 | 实测 0.15 相比 0.18：误拒率只改善 2%，但拒答准确率损失 5%，半相关题损失 12.5%。边际收益为负，回调 |
+| C29 | `qa.py` 新增 `_detect_lang` 和 `_get_threshold` | 支持按语言选阈值；兼容旧格式（数字 → `{"default": 数字}`） |
+| C30 | `evaluate.py` 新增 `fine_recall_at_20_gold_given` 诊断项 | 区分「粗排漏召回」vs「精排排错」。实测英文精排从粗排命中中丢失 15%，中文丢失 6% |
+
+---
+
+## 第 7 块补充：对照组评估
+
+### 背景
+
+主评估集（140 题）测「方法在混合题型上的整体表现」，但包含 12 道边界案例（符号型、否定句、表格行标签、章节主旨、跨页误匹配、低信号发布句、关系型语义模糊），这些题方法天然不擅长。为了验证「方法在擅长领域确实强」，新增对照组。
+
+### 契约（已确认）
+
+**评估集 `ctrl_eval_set.json`**
+- 规模：40 条（20 英 + 20 中，语义严格对应）。
+- 结构：与 `eval_set.json` 一致，含 `id / lang / type / question / answerable / category / gold_page / gold_keywords`。
+- 类型：T1 具体数值型、T2 定义型、T3 直接引用型、T4 步骤/配置型、T5 单页内对比型，每类 4 题。
+- 全部可答（无不可答题）。
+- 防自证：题目由项目所有者出（不看答案位置），gold 由开发伙伴标注。
+
+**指标口径**
+- 与第 7 块主指标一致：粗排 Recall@5 / MRR@20、精排 Recall@4 / MRR@4。
+- 中英文分开统计。
+- 按 `type`（T1–T5）分组统计，看「哪种题型最强」。
+- 不测拒答指标（对照组全是可答题）。
+
+**接口**
+- `evaluate_ctrl.py`：`main()` 跑对照组评估，打印表格 + 写 `ctrl_eval_report.json`。
+
+**验收标准**
+- 16a `ctrl_eval_set.json` 有 40 条，结构与 `eval_set.json` 一致。
+- 16b `evaluate_ctrl.py` 跑完不报错，输出表格 + `ctrl_eval_report.json`。
+- 16c en / zh 各自指标都有数字。
+- 16d 按 type 分组统计有 5 行（T1–T5）。
+
+### 实测结果（EN）
+
+| 指标 | EN | ZH |
+|---|---|---|
+| 可答题数 | 20 | 20 |
+| 粗排 Recall@5 | 0.45 | 0.25 |
+| 粗排 MRR@20 | 0.35 | 0.22 |
+| 精排 Recall@4 | 0.65 | 0.45 |
+| 精排 MRR@4 | 0.45 | 0.43 |
+
+**按 type 分组（EN）**：
+
+| type | Recall@5 | MRR@20 | Recall@4 | MRR@4 |
+|---|---|---|---|---|
+| T1 数值型 | 0.75 | 0.64 | **1.00** | 1.00 |
+| T2 定义型 | 0.25 | 0.14 | 0.75 | 0.38 |
+| T3 引用型 | 0.25 | 0.33 | 0.75 | 0.38 |
+| T4 步骤/配置型 | 0.75 | 0.44 | 0.50 | 0.38 |
+| T5 对比型 | **0.25** | 0.19 | **0.25** | 0.13 |
+
+### 设计决策（4 条）
+
+| # | 决策 | 原因 | 放弃的替代 / 代价 |
+|---|---|---|---|
+| 1 | 对照组 20 道题 × 2 语言 = 40 条 | 20 题粒度够看出「方法擅长 vs 不擅长」，40 条平衡工作量 | 30 题：更稳但工作量大；10 题：粒度太粗 |
+| 2 | 防自证：分离出题与标答案 | 避免「出题人知道答案位置」 | 一人包办：有自证风险 |
+| 3 | 按 type 分组统计 | 看「哪种题型最强」，比整体平均更有信息量 | 只看整体：掩盖内部差异 |
+| 4 | 接受对照组整体 0.45 低于主评估集的 0.60 | 诚实呈现，暴露方法边界 | 改题面刷分：违背工程诚实 |
+
+### 结论
+
+- **方法在「找一个数字」上确实满分**（T1 精排 Recall@4 = 1.00），这是核心优势。
+- **方法在「比较概念」上接近 0**（T5 双指标 0.25），这是明确弱点。
+- **对照组整体 0.45 不低不高**，因为「事实型」内部有强弱分化。这个结论比「对照组 0.85 验证假设」更有价值——它说明我们对方法能力边界的认知本身需要数据校准。
+
+### 变更记录
+
+| # | 变更 | 原因 |
+|---|---|---|
+| C31 | `evaluate_ctrl.py` docstring 从「20 道题（en 10 + zh 10）」改为「20 道题（中英各一版，40 条记录）」 | 对照组规模最终定为 20 道题 × 2 语言 = 40 条记录，初版 docstring 误写为 20 条记录 |
+| C32 | `ctrl_eval_set.json` 每条补 `answerable: true` 和 `category: "answerable"`；`evaluate_ctrl.py` 的 `load_ctrl_eval_set` 退回纯 `json.load` | 保持两个评估集 JSON 结构一致，避免在代码里补字段 |
+| C33 | 对照组最终结论采用 B+C 组合：保留数据、按 type 分组呈现、诚实写「假设部分证伪」 | 不换题（不美化指标），通过分组暴露「T1 满分 T5 最弱」的方法能力分化 |

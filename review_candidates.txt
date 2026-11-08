@@ -1,0 +1,551 @@
+================================================================================
+en_003: What are the dimensions of matrices A and B in LoRA?
+gold_page = 4
+gold_keywords = ['d×r', 'r×k']
+================================================================================
+  #1  p22-23     score=0.7165
+       'B(cid:107)2 F tomeasurethesubspace A B min{i,j} similarity between two column orthonormal matrices Ui ∈ Rd×i and Uj ∈ Rd×j, obtained by A B takingcolu'
+  #2  p10-11     score=0.6917
+       'bspace,whichsuggeststhatalow-rankadaptationmatrixissufficient. 6However, wedonotexpectasmallr toworkforeverytaskordataset. Considerthefollowingthought'
+  #3  p6-7       score=0.6875
+       '×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto. LoRA model LoRA 6 Model&Method #Trainable E2ENLGChallenge Parameters BLEU NIST MET ROUGE-L CIDEr '
+  #4  p2-2       score=0.6859
+       'itchtasksbyreplacingthe matricesAandB inFigure1, reducingthestoragerequirementandtask-switchingover- headsignificantly. • LoRA makes training more eff'
+  #5  p23-23     score=0.6816
+       'l =0 76.1M 64.9 87.9 p i r =1 7.1M 71.9 89.8 r =4 21.2M 73.2 91.0 AdapterH r =8 40.1M 73.2 91.5 r =16 77.9M 73.2 91.5 r =64 304.4M 72.6 91.5 r =2 4.7M'
+  #6  p11-12     score=0.6786
+       'we also plot two random Gaussian matrices, which do not share any common singularvaluedirectionswitheachother. 7.3 HOWDOESTHEADAPTATIONMATRIX∆W COMPAR'
+  #7  p2-2       score=0.6664
+       ',2020;Liuetal.,2021)(Section3). Moreimportantly,thesemethodoftenfailto matchthefine-tuningbaselines,posingatrade-offbetweenefficiencyandmodelquality. '
+  #8  p11-11     score=0.6656
+       'A ,i,j)= Ar=8 Ar=64 F ∈[0,1] (4) r=8 r=64 min(i,j) whereUi representsthecolumnsofU correspondingtothetop-isingularvectors. Ar=8 Ar=8 φ(·) has a range '
+  #9  p19-19     score=0.6633
+       '.Len. 512 BatchSize 4 4 4 4 4 4 8 8 #Epochs 10 10 20 20 10 20 20 30 RoBERTalarge LearningRate 3E-04 4E-04 3E-04 2E-04 2E-04 3E-04 4E-04 2E-04 LoRA LoR'
+  #10 p10-10     score=0.6594
+       'performance? 2) Is the “optimal” adaptation matrix ∆W really rank- deficient? Ifso,whatisagoodranktouseinpractice? 3)Whatistheconnectionbetween∆W and '
+  #11 p11-11     score=0.6566
+       'keanimportantobservationfromFigure3. Directions corresponding to the top singular vector overlap significantly between A and A , while others do not. '
+  #12 p12-12     score=0.6559
+       'how “large” is ∆W comparing to its corresponding directions in W? This can shed light on the underlyingmechanismforadaptingpre-trainedlanguagemodels. '
+  #13 p4-4       score=0.6548 ★ GOLD
+       'Aanditspracticalbenefits.Theprinciplesoutlinedhereapply toanydenselayersindeeplearningmodels,thoughweonlyfocusoncertainweightsinTransformer languagemo'
+  #14 p22-22     score=0.6483
+       ',PrefixEmbedandPrefixLayerperformsverypoorlyonMNLI-100dataset,with PrefixEmbedperformingonlyslightlybetterthanrandomchance(37.6%vs. 33.3%). PrefixLaye'
+  #15 p23-23     score=0.6479
+       '4 151.1M 75.9 91.1 q v p i r =r =64,l =8,l =4 302.1M 76.2 91.3 q v p i LoRA+PL r =r =8,l =8,l =4 52.8M 72.9 90.2 q v p i Table15:Hyperparameteranalysi'
+  #16 p18-18     score=0.6476
+       'the 14 total categories are not seen during training, but are represented in the test set, evaluation is typically broken out by “seen” categories (S)'
+  #17 p20-21     score=0.6474
+       'ing q k v o hyperparametersusedinourGPT-3experimentsarelistedinTable12. E COMBINING LORA WITH PREFIX TUNING LoRAcanbenaturallycombinedwithexistingpref'
+  #18 p23-24     score=0.6404
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #19 p24-24     score=0.6320
+       'v Table17: ThehyperparametersusedfordifferentGPT-3adaptationmethodsonMNLI(m)-n. whereoursimilarityisdefinedas: (cid:80)p σ2 1(cid:16) (cid:17) φ(A,B,i'
+  #20 p1-1       score=0.6234
+       'LORA: LOW-RANK ADAPTATION OF LARGE LAN- GUAGE MODELS EdwardHu∗ YelongShen∗ PhillipWallis ZeyuanAllen-Zhu YuanzhiLi SheanWang LuWang WeizhuChen Microso'
+
+================================================================================
+en_006: Does LoRA introduce additional inference latency?
+gold_page = 2
+gold_keywords = ['no', 'inference latency']
+================================================================================
+  #1  p17-17     score=0.8220
+       'rningonGPT-3(Brownetal.,2020). B INFERENCE LATENCY INTRODUCED BY ADAPTER LAYERS Adapterlayersareexternalmodulesaddedtoapre-trainedmodelinasequentialma'
+  #2  p1-1       score=0.8051
+       'and the GPUmemoryrequirementby3times. LoRAperformson-parorbetterthanfine- tuninginmodelqualityonRoBERTa,DeBERTa,GPT-2,andGPT-3,despitehav- ingfewertra'
+  #3  p21-21     score=0.7822
+       'lldatasetsaftertuninglearningrate. rally,wereplacethemaftereveryTransformerblockwithaninputagnosticvector. Thus,boththe embeddingsandsubsequentTransfo'
+  #4  p20-21     score=0.7807
+       'ing q k v o hyperparametersusedinourGPT-3experimentsarelistedinTable12. E COMBINING LORA WITH PREFIX TUNING LoRAcanbenaturallycombinedwithexistingpref'
+  #5  p1-1       score=0.7779
+       'LORA: LOW-RANK ADAPTATION OF LARGE LAN- GUAGE MODELS EdwardHu∗ YelongShen∗ PhillipWallis ZeyuanAllen-Zhu YuanzhiLi SheanWang LuWang WeizhuChen Microso'
+  #6  p23-24     score=0.7772
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #7  p5-5       score=0.7771
+       'thecheckpoint sizeisreducedbyroughly10,000×(from350GBto35MB)4.Thisallowsustotrainwithsignifi- cantlyfewerGPUsandavoidI/Obottlenecks. Anotherbenefitist'
+  #8  p2-2       score=0.7709 ★ GOLD
+       ',2020;Liuetal.,2021)(Section3). Moreimportantly,thesemethodoftenfailto matchthefine-tuningbaselines,posingatrade-offbetweenefficiencyandmodelquality. '
+  #9  p22-22     score=0.7668
+       ',PrefixEmbedandPrefixLayerperformsverypoorlyonMNLI-100dataset,with PrefixEmbedperformingonlyslightlybetterthanrandomchance(37.6%vs. 33.3%). PrefixLaye'
+  #10 p8-8       score=0.7640
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+  #11 p23-23     score=0.7612
+       '4 151.1M 75.9 91.1 q v p i r =r =64,l =8,l =4 302.1M 76.2 91.3 q v p i LoRA+PL r =r =8,l =8,l =4 52.8M 72.9 90.2 q v p i Table15:Hyperparameteranalysi'
+  #12 p3-3       score=0.7587
+       ',2021;Ru¨ckle´etal.,2020)oroptimizingsomeforms oftheinputlayeractivations(Li&Liang,2021;Lesteretal.,2021;Hambardzumyanetal.,2020; Liu et al., 2021). H'
+  #13 p2-2       score=0.7520 ★ GOLD
+       'itchtasksbyreplacingthe matricesAandB inFigure1, reducingthestoragerequirementandtask-switchingover- headsignificantly. • LoRA makes training more eff'
+  #14 p3-4       score=0.7510
+       'processedsequentially.Thismakes a difference in the online inference setting where the batch size is typically as small as one. In a genericscenariowi'
+  #15 p20-20     score=0.7492
+       '1 0.1 0.0 BatchSize 8 #Epoch 5 WarmupSteps 500 LearningRateSchedule Linear LabelSmooth 0.1 0.1 0.0 LearningRate 0.0002 Adaptation r =r =4 q v LoRAα 32'
+  #16 p4-5       score=0.7445
+       'settingtheLoRArankrtotherankofthepre-trainedweightmatrices. In otherwords,asweincreasethenumberoftrainableparameters3,trainingLoRAroughlyconverges tot'
+  #17 p16-17     score=0.7410
+       'on Acoustics, Speech and Signal Processing (ICASSP), pp.5005–5009.IEEE,2016. Victor Zhong, Caiming Xiong, and Richard Socher. Seq2sql: Generating stru'
+  #18 p7-8       score=0.7393
+       ') is a more recent variant of BERT that is trained on a much larger scale and performs very competitively on benchmarks such as GLUE (Wang et al., 201'
+  #19 p9-9       score=0.7382
+       'largecheckpointitproducesandthehighhardwarebarriertoentrysinceit hasthesamememoryfootprintaspre-training. Parameter-EfficientAdaptation. Manyhavepropo'
+  #20 p18-18     score=0.7366
+       'the 14 total categories are not seen during training, but are represented in the test set, evaluation is typically broken out by “seen” categories (S)'
+
+================================================================================
+en_013: What baselines are compared against LoRA?
+gold_page = 6
+gold_keywords = ['Adapter', 'AdapterH', 'Prefix', 'BitFit']
+================================================================================
+  #1  p8-8       score=0.7440
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+  #2  p23-24     score=0.7312
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #3  p21-22     score=0.7257
+       'et al., 2017) following the setup of Li & Liang (2021). The result is shown in Table 13. Similar to our result on E2E NLG Challenge, reported in Secti'
+  #4  p5-5       score=0.7240
+       'thecheckpoint sizeisreducedbyroughly10,000×(from350GBto35MB)4.Thisallowsustotrainwithsignifi- cantlyfewerGPUsandavoidI/Obottlenecks. Anotherbenefitist'
+  #5  p18-18     score=0.7049
+       'the 14 total categories are not seen during training, but are represented in the test set, evaluation is typically broken out by “seen” categories (S)'
+  #6  p10-10     score=0.7046
+       'performance? 2) Is the “optimal” adaptation matrix ∆W really rank- deficient? Ifso,whatisagoodranktouseinpractice? 3)Whatistheconnectionbetween∆W and '
+  #7  p23-23     score=0.7024
+       '4 151.1M 75.9 91.1 q v p i r =r =64,l =8,l =4 302.1M 76.2 91.3 q v p i LoRA+PL r =r =8,l =8,l =4 52.8M 72.9 90.2 q v p i Table15:Hyperparameteranalysi'
+  #8  p21-21     score=0.7011
+       'lldatasetsaftertuninglearningrate. rally,wereplacethemaftereveryTransformerblockwithaninputagnosticvector. Thus,boththe embeddingsandsubsequentTransfo'
+  #9  p1-1       score=0.7000
+       'LORA: LOW-RANK ADAPTATION OF LARGE LAN- GUAGE MODELS EdwardHu∗ YelongShen∗ PhillipWallis ZeyuanAllen-Zhu YuanzhiLi SheanWang LuWang WeizhuChen Microso'
+  #10 p22-22     score=0.6979
+       ',PrefixEmbedandPrefixLayerperformsverypoorlyonMNLI-100dataset,with PrefixEmbedperformingonlyslightlybetterthanrandomchance(37.6%vs. 33.3%). PrefixLaye'
+  #11 p2-2       score=0.6912
+       ',2020;Liuetal.,2021)(Section3). Moreimportantly,thesemethodoftenfailto matchthefine-tuningbaselines,posingatrade-offbetweenefficiencyandmodelquality. '
+  #12 p2-2       score=0.6884
+       'itchtasksbyreplacingthe matricesAandB inFigure1, reducingthestoragerequirementandtask-switchingover- headsignificantly. • LoRA makes training more eff'
+  #13 p7-8       score=0.6854
+       ') is a more recent variant of BERT that is trained on a much larger scale and performs very competitively on benchmarks such as GLUE (Wang et al., 201'
+  #14 p6-7       score=0.6838 ★ GOLD
+       '×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto. LoRA model LoRA 6 Model&Method #Trainable E2ENLGChallenge Parameters BLEU NIST MET ROUGE-L CIDEr '
+  #15 p26-26     score=0.6802
+       '30 256 1.16 68.92 8.6982 0.4629 0.7128 2.5012 512 1.16 68.78 8.6857 0.4637 0.7128 2.5025 1024 1.17 69.37 8.7495 0.4659 0.7149 2.5090 Table 18: Validat'
+  #16 p20-21     score=0.6752
+       'ing q k v o hyperparametersusedinourGPT-3experimentsarelistedinTable12. E COMBINING LORA WITH PREFIX TUNING LoRAcanbenaturallycombinedwithexistingpref'
+  #17 p7-7       score=0.6657
+       '(Wang et al., 2019) in recent years, it remains a competitive and popularpre-trainedmodelforitssizeamongpractitioners. Wetakethepre-trainedRoBERTabase'
+  #18 p1-1       score=0.6650
+       'and the GPUmemoryrequirementby3times. LoRAperformson-parorbetterthanfine- tuninginmodelqualityonRoBERTa,DeBERTa,GPT-2,andGPT-3,despitehav- ingfewertra'
+  #19 p20-20     score=0.6640
+       '1 0.1 0.0 BatchSize 8 #Epoch 5 WarmupSteps 500 LearningRateSchedule Linear LabelSmooth 0.1 0.1 0.0 LearningRate 0.0002 Adaptation r =r =4 q v LoRAα 32'
+  #20 p12-13     score=0.6629
+       'input sequencelengthwhileretaininghighmodelquality. Importantly,itallowsforquicktask-switching whendeployedasaservicebysharingthevastmajorityofthemode'
+
+================================================================================
+en_014: What benchmark is used for RoBERTa and DeBERTa?
+gold_page = 5
+gold_keywords = ['GLUE']
+================================================================================
+  #1  p7-7       score=0.6747
+       '(Wang et al., 2019) in recent years, it remains a competitive and popularpre-trainedmodelforitssizeamongpractitioners. Wetakethepre-trainedRoBERTabase'
+  #2  p10-10     score=0.6447
+       'performance? 2) Is the “optimal” adaptation matrix ∆W really rank- deficient? Ifso,whatisagoodranktouseinpractice? 3)Whatistheconnectionbetween∆W and '
+  #3  p7-8       score=0.6357
+       ') is a more recent variant of BERT that is trained on a much larger scale and performs very competitively on benchmarks such as GLUE (Wang et al., 201'
+  #4  p19-20     score=0.6355
+       'Size 32 RoBERTalarge #Epochs 10 5 10 10 5 20 20 10 AdptH(6M)† LearningRate 3E-05 3E-04 3E-04 3E-04 3E-04 3E-04 3E-04 3E-04 Bottleneckr 64 MaxSeq.Len. '
+  #5  p18-19     score=0.6349
+       'the hyperparameters used in our runs inTable9. D.2 DEBERTA WeagaintrainusingAdamWwithalinearlearningratedecayschedule. FollowingHeetal.(2021), wetunel'
+  #6  p19-19     score=0.6227
+       '.Len. 512 BatchSize 4 4 4 4 4 4 8 8 #Epochs 10 10 20 20 10 20 20 30 RoBERTalarge LearningRate 3E-04 4E-04 3E-04 2E-04 2E-04 3E-04 4E-04 2E-04 LoRA LoR'
+  #7  p23-24     score=0.6211
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #8  p10-10     score=0.6210
+       '8 4 4 2 WikiSQL(±0.5%) 70.4 70.0 73.0 73.2 71.4 73.7 73.7 MultiNLI(±0.1%) 91.0 90.8 91.0 91.3 91.3 91.3 91.7 Table5: ValidationaccuracyonWikiSQLandMul'
+  #9  p8-8       score=0.6196
+       ', and SAMSum around ±0.2/±0.2/±0.1forthethreemetrics. 5.5 SCALINGUPTOGPT-3175B AsafinalstresstestforLoRA,wescaleuptoGPT-3with175billionparameters. Due'
+  #10 p26-26     score=0.6101
+       '1 6 11 61 12 62 13 63 14 64 15 65 16 j 69 reyaL 1 6 11 61 12 62 13 63 14 64 15 65 16 (Ar=64,A0r=64,i,j) j Figure7:Normalizedsubspacesimilaritybetweent'
+  #11 p7-7       score=0.6051
+       'erL) 0.88M 69.1 8.68 46.3 71.4 2.49 ±.1 ±.03 ±.0 ±.2 ±.0 GPT-2L(AdapterL) 23.00M 68.9 8.70 46.1 71.3 2.45 ±.3 ±.04 ±.1 ±.2 ±.02 GPT-2L(PreLayer)* 0.77'
+  #12 p5-6       score=0.6025 ★ GOLD
+       'dates.Asimple variantistoupdateonlysomelayerswhilefreezingothers. Weincludeonesuchbaselinereported inpriorwork(Li&Liang,2021)onGPT-2,whichadaptsjustth'
+  #13 p26-26     score=0.6019
+       '30 256 1.16 68.92 8.6982 0.4629 0.7128 2.5012 512 1.16 68.78 8.6857 0.4637 0.7128 2.5025 1024 1.17 69.37 8.7495 0.4659 0.7149 2.5090 Table 18: Validat'
+  #14 p16-16     score=0.5987
+       'R. Bowman. Superglue: A stickier benchmark for general-purpose language understandingsystems,2020. AlexWarstadt,AmanpreetSingh,andSamuelRBowman. Neura'
+  #15 p4-4       score=0.5985
+       'andtheirrespective 0 outputvectorsaresummedcoordinate-wise. Forh=W x,ourmodifiedforwardpassyields: 0 h=W x+∆Wx=W x+BAx (3) 0 0 Weillustrateourreparame'
+  #16 p22-23     score=0.5982
+       'B(cid:107)2 F tomeasurethesubspace A B min{i,j} similarity between two column orthonormal matrices Ui ∈ Rd×i and Uj ∈ Rd×j, obtained by A B takingcolu'
+  #17 p11-11     score=0.5951
+       'keanimportantobservationfromFigure3. Directions corresponding to the top singular vector overlap significantly between A and A , while others do not. '
+  #18 p17-18     score=0.5929
+       'P8 (question-answering), RTE (inference), 8https://quoradata.quora.com/First-Quora-Dataset-Release-Question-Pairs 17 and STS-B (textual similarity, Ce'
+  #19 p11-12     score=0.5926
+       'we also plot two random Gaussian matrices, which do not share any common singularvaluedirectionswitheachother. 7.3 HOWDOESTHEADAPTATIONMATRIX∆W COMPAR'
+  #20 p14-14     score=0.5918
+       'zedneurallayers,2021. DiederikP.KingmaandJimmyBa. Adam: Amethodforstochasticoptimization,2017. Dmitry Lepikhin, HyoukJoong Lee, Yuanzhong Xu, Dehao Ch'
+
+================================================================================
+en_016: How does LoRA perform compared to fine-tuning on GPT-3?
+gold_page = 8
+gold_keywords = ['matches', 'exceeds']
+================================================================================
+  #1  p21-22     score=0.7977
+       'et al., 2017) following the setup of Li & Liang (2021). The result is shown in Table 13. Similar to our result on E2E NLG Challenge, reported in Secti'
+  #2  p8-8       score=0.7853 ★ GOLD
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+  #3  p23-24     score=0.7772
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #4  p5-5       score=0.7663
+       'thecheckpoint sizeisreducedbyroughly10,000×(from350GBto35MB)4.Thisallowsustotrainwithsignifi- cantlyfewerGPUsandavoidI/Obottlenecks. Anotherbenefitist'
+  #5  p1-1       score=0.7660
+       'LORA: LOW-RANK ADAPTATION OF LARGE LAN- GUAGE MODELS EdwardHu∗ YelongShen∗ PhillipWallis ZeyuanAllen-Zhu YuanzhiLi SheanWang LuWang WeizhuChen Microso'
+  #6  p22-22     score=0.7425
+       ',PrefixEmbedandPrefixLayerperformsverypoorlyonMNLI-100dataset,with PrefixEmbedperformingonlyslightlybetterthanrandomchance(37.6%vs. 33.3%). PrefixLaye'
+  #7  p2-2       score=0.7389
+       'itchtasksbyreplacingthe matricesAandB inFigure1, reducingthestoragerequirementandtask-switchingover- headsignificantly. • LoRA makes training more eff'
+  #8  p6-7       score=0.7377
+       '×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto. LoRA model LoRA 6 Model&Method #Trainable E2ENLGChallenge Parameters BLEU NIST MET ROUGE-L CIDEr '
+  #9  p7-8       score=0.7338 ★ GOLD
+       ') is a more recent variant of BERT that is trained on a much larger scale and performs very competitively on benchmarks such as GLUE (Wang et al., 201'
+  #10 p1-1       score=0.7328
+       'and the GPUmemoryrequirementby3times. LoRAperformson-parorbetterthanfine- tuninginmodelqualityonRoBERTa,DeBERTa,GPT-2,andGPT-3,despitehav- ingfewertra'
+  #11 p21-21     score=0.7250
+       'lldatasetsaftertuninglearningrate. rally,wereplacethemaftereveryTransformerblockwithaninputagnosticvector. Thus,boththe embeddingsandsubsequentTransfo'
+  #12 p23-23     score=0.7238
+       '4 151.1M 75.9 91.1 q v p i r =r =64,l =8,l =4 302.1M 76.2 91.3 q v p i LoRA+PL r =r =8,l =8,l =4 52.8M 72.9 90.2 q v p i Table15:Hyperparameteranalysi'
+  #13 p20-21     score=0.7209
+       'ing q k v o hyperparametersusedinourGPT-3experimentsarelistedinTable12. E COMBINING LORA WITH PREFIX TUNING LoRAcanbenaturallycombinedwithexistingpref'
+  #14 p2-2       score=0.7196
+       ',2020;Liuetal.,2021)(Section3). Moreimportantly,thesemethodoftenfailto matchthefine-tuningbaselines,posingatrade-offbetweenefficiencyandmodelquality. '
+  #15 p10-10     score=0.7064
+       'performance? 2) Is the “optimal” adaptation matrix ∆W really rank- deficient? Ifso,whatisagoodranktouseinpractice? 3)Whatistheconnectionbetween∆W and '
+  #16 p9-9       score=0.7030
+       '–wherefine-tuningontask-specificdataafterpre- training on general domain data provides a significant performance gain compared to training on task-spe'
+  #17 p21-22     score=0.6976
+       '. 21 Method WebNLG BLEU↑ MET↑ TER↓ U S A U S A U S A GPT-2Medium Fine-Tune(354M) 27.7 64.2 46.5 .30 .45 .38 .76 .33 .53 AdapterL(0.37M) 45.1 54.5 50.2'
+  #18 p22-22     score=0.6938
+       'Prefix(0.77M) 47.7 63.4 56.3 .39 .45 .42 .48 .34 .40 LoRA(0.77M) 48.4 64.0 57.0 .39 .45 .42 .45 .32 .38 ±.3 ±.3 ±.1 Table14: GPT-2withdifferentadaptat'
+  #19 p12-13     score=0.6926
+       'input sequencelengthwhileretaininghighmodelquality. Importantly,itallowsforquicktask-switching whendeployedasaservicebysharingthevastmajorityofthemode'
+  #20 p7-7       score=0.6912
+       '(Wang et al., 2019) in recent years, it remains a competitive and popularpre-trainedmodelforitssizeamongpractitioners. Wetakethepre-trainedRoBERTabase'
+
+================================================================================
+en_029: What is the main advantage of LoRA for task switching?
+gold_page = 5
+gold_keywords = ['swap', 'LoRA weights']
+================================================================================
+  #1  p2-2       score=0.7271
+       'itchtasksbyreplacingthe matricesAandB inFigure1, reducingthestoragerequirementandtask-switchingover- headsignificantly. • LoRA makes training more eff'
+  #2  p5-5       score=0.7098 ★ GOLD
+       'thecheckpoint sizeisreducedbyroughly10,000×(from350GBto35MB)4.Thisallowsustotrainwithsignifi- cantlyfewerGPUsandavoidI/Obottlenecks. Anotherbenefitist'
+  #3  p12-13     score=0.7055
+       'input sequencelengthwhileretaininghighmodelquality. Importantly,itallowsforquicktask-switching whendeployedasaservicebysharingthevastmajorityofthemode'
+  #4  p23-24     score=0.6877
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #5  p8-8       score=0.6711
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+  #6  p21-21     score=0.6635
+       'lldatasetsaftertuninglearningrate. rally,wereplacethemaftereveryTransformerblockwithaninputagnosticvector. Thus,boththe embeddingsandsubsequentTransfo'
+  #7  p21-22     score=0.6599
+       'et al., 2017) following the setup of Li & Liang (2021). The result is shown in Table 13. Similar to our result on E2E NLG Challenge, reported in Secti'
+  #8  p2-2       score=0.6593
+       ',2020;Liuetal.,2021)(Section3). Moreimportantly,thesemethodoftenfailto matchthefine-tuningbaselines,posingatrade-offbetweenefficiencyandmodelquality. '
+  #9  p1-1       score=0.6579
+       'LORA: LOW-RANK ADAPTATION OF LARGE LAN- GUAGE MODELS EdwardHu∗ YelongShen∗ PhillipWallis ZeyuanAllen-Zhu YuanzhiLi SheanWang LuWang WeizhuChen Microso'
+  #10 p22-22     score=0.6575
+       ',PrefixEmbedandPrefixLayerperformsverypoorlyonMNLI-100dataset,with PrefixEmbedperformingonlyslightlybetterthanrandomchance(37.6%vs. 33.3%). PrefixLaye'
+  #11 p10-10     score=0.6524
+       'performance? 2) Is the “optimal” adaptation matrix ∆W really rank- deficient? Ifso,whatisagoodranktouseinpractice? 3)Whatistheconnectionbetween∆W and '
+  #12 p20-21     score=0.6436
+       'ing q k v o hyperparametersusedinourGPT-3experimentsarelistedinTable12. E COMBINING LORA WITH PREFIX TUNING LoRAcanbenaturallycombinedwithexistingpref'
+  #13 p12-12     score=0.6430
+       'righttopr singularvector q directionsofeither(1)∆W ,(2)W ,or(3)arandommatrix. Theweightmatricesaretakenfrom q q the48thlayerofGPT-3. Wedrawseveralconc'
+  #14 p1-1       score=0.6420
+       'and the GPUmemoryrequirementby3times. LoRAperformson-parorbetterthanfine- tuninginmodelqualityonRoBERTa,DeBERTa,GPT-2,andGPT-3,despitehav- ingfewertra'
+  #15 p18-18     score=0.6354
+       'the 14 total categories are not seen during training, but are represented in the test set, evaluation is typically broken out by “seen” categories (S)'
+  #16 p20-20     score=0.6350
+       '1 0.1 0.0 BatchSize 8 #Epoch 5 WarmupSteps 500 LearningRateSchedule Linear LabelSmooth 0.1 0.1 0.0 LearningRate 0.0002 Adaptation r =r =4 q v LoRAα 32'
+  #17 p7-8       score=0.6343
+       ') is a more recent variant of BERT that is trained on a much larger scale and performs very competitively on benchmarks such as GLUE (Wang et al., 201'
+  #18 p16-17     score=0.6308
+       'on Acoustics, Speech and Signal Processing (ICASSP), pp.5005–5009.IEEE,2016. Victor Zhong, Caiming Xiong, and Richard Socher. Seq2sql: Generating stru'
+  #19 p17-17     score=0.6308
+       'rningonGPT-3(Brownetal.,2020). B INFERENCE LATENCY INTRODUCED BY ADAPTER LAYERS Adapterlayersareexternalmodulesaddedtoapre-trainedmodelinasequentialma'
+  #20 p14-14     score=0.6271
+       'zedneurallayers,2021. DiederikP.KingmaandJimmyBa. Adam: Amethodforstochasticoptimization,2017. Dmitry Lepikhin, HyoukJoong Lee, Yuanzhong Xu, Dehao Ch'
+
+================================================================================
+en_038: What is the relationship between LoRA and prefix tuning?
+gold_page = 2
+gold_keywords = ['orthogonal']
+================================================================================
+  #1  p21-21     score=0.8314
+       'lldatasetsaftertuninglearningrate. rally,wereplacethemaftereveryTransformerblockwithaninputagnosticvector. Thus,boththe embeddingsandsubsequentTransfo'
+  #2  p22-22     score=0.8199
+       ',PrefixEmbedandPrefixLayerperformsverypoorlyonMNLI-100dataset,with PrefixEmbedperformingonlyslightlybetterthanrandomchance(37.6%vs. 33.3%). PrefixLaye'
+  #3  p20-21     score=0.8176
+       'ing q k v o hyperparametersusedinourGPT-3experimentsarelistedinTable12. E COMBINING LORA WITH PREFIX TUNING LoRAcanbenaturallycombinedwithexistingpref'
+  #4  p23-24     score=0.8169
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #5  p23-23     score=0.8117
+       '4 151.1M 75.9 91.1 q v p i r =r =64,l =8,l =4 302.1M 76.2 91.3 q v p i LoRA+PL r =r =8,l =8,l =4 52.8M 72.9 90.2 q v p i Table15:Hyperparameteranalysi'
+  #6  p21-22     score=0.7980
+       'et al., 2017) following the setup of Li & Liang (2021). The result is shown in Table 13. Similar to our result on E2E NLG Challenge, reported in Secti'
+  #7  p22-22     score=0.7946
+       'Prefix(0.77M) 47.7 63.4 56.3 .39 .45 .42 .48 .34 .40 LoRA(0.77M) 48.4 64.0 57.0 .39 .45 .42 .45 .32 .38 ±.3 ±.3 ±.1 Table14: GPT-2withdifferentadaptat'
+  #8  p12-13     score=0.7772
+       'input sequencelengthwhileretaininghighmodelquality. Importantly,itallowsforquicktask-switching whendeployedasaservicebysharingthevastmajorityofthemode'
+  #9  p1-1       score=0.7770
+       'and the GPUmemoryrequirementby3times. LoRAperformson-parorbetterthanfine- tuninginmodelqualityonRoBERTa,DeBERTa,GPT-2,andGPT-3,despitehav- ingfewertra'
+  #10 p2-2       score=0.7685 ★ GOLD
+       'itchtasksbyreplacingthe matricesAandB inFigure1, reducingthestoragerequirementandtask-switchingover- headsignificantly. • LoRA makes training more eff'
+  #11 p20-20     score=0.7641
+       '1 0.1 0.0 BatchSize 8 #Epoch 5 WarmupSteps 500 LearningRateSchedule Linear LabelSmooth 0.1 0.1 0.0 LearningRate 0.0002 Adaptation r =r =4 q v LoRAα 32'
+  #12 p2-2       score=0.7632 ★ GOLD
+       ',2020;Liuetal.,2021)(Section3). Moreimportantly,thesemethodoftenfailto matchthefine-tuningbaselines,posingatrade-offbetweenefficiencyandmodelquality. '
+  #13 p5-5       score=0.7526
+       'thecheckpoint sizeisreducedbyroughly10,000×(from350GBto35MB)4.Thisallowsustotrainwithsignifi- cantlyfewerGPUsandavoidI/Obottlenecks. Anotherbenefitist'
+  #14 p1-1       score=0.7479
+       'LORA: LOW-RANK ADAPTATION OF LARGE LAN- GUAGE MODELS EdwardHu∗ YelongShen∗ PhillipWallis ZeyuanAllen-Zhu YuanzhiLi SheanWang LuWang WeizhuChen Microso'
+  #15 p7-8       score=0.7322
+       ') is a more recent variant of BERT that is trained on a much larger scale and performs very competitively on benchmarks such as GLUE (Wang et al., 201'
+  #16 p6-6       score=0.7290
+       'on“prefixing”,whichprepends suchtokenstotheprompt,and“infixing”,whichappendstotheprompt;botharediscussedinLi& Liang(2021). Weusel (resp. l )denotethen'
+  #17 p3-4       score=0.7285
+       'processedsequentially.Thismakes a difference in the online inference setting where the batch size is typically as small as one. In a genericscenariowi'
+  #18 p9-9       score=0.7256
+       '–wherefine-tuningontask-specificdataafterpre- training on general domain data provides a significant performance gain compared to training on task-spe'
+  #19 p14-14     score=0.7246
+       'zedneurallayers,2021. DiederikP.KingmaandJimmyBa. Adam: Amethodforstochasticoptimization,2017. Dmitry Lepikhin, HyoukJoong Lee, Yuanzhong Xu, Dehao Ch'
+  #20 p8-8       score=0.7233
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+
+================================================================================
+en_040: What is the empirical investigation focus in Section 7?
+gold_page = 9
+gold_keywords = ['GPT-3 175B', 'trainable parameters']
+================================================================================
+  #1  p26-26     score=0.6061
+       '30 256 1.16 68.92 8.6982 0.4629 0.7128 2.5012 512 1.16 68.78 8.6857 0.4637 0.7128 2.5025 1024 1.17 69.37 8.7495 0.4659 0.7149 2.5090 Table 18: Validat'
+  #2  p23-23     score=0.6027
+       '4 151.1M 75.9 91.1 q v p i r =r =64,l =8,l =4 302.1M 76.2 91.3 q v p i LoRA+PL r =r =8,l =8,l =4 52.8M 72.9 90.2 q v p i Table15:Hyperparameteranalysi'
+  #3  p24-24     score=0.6004
+       'v Table17: ThehyperparametersusedfordifferentGPT-3adaptationmethodsonMNLI(m)-n. whereoursimilarityisdefinedas: (cid:80)p σ2 1(cid:16) (cid:17) φ(A,B,i'
+  #4  p18-18     score=0.5972
+       'the 14 total categories are not seen during training, but are represented in the test set, evaluation is typically broken out by “seen” categories (S)'
+  #5  p14-14     score=0.5928
+       'zedneurallayers,2021. DiederikP.KingmaandJimmyBa. Adam: Amethodforstochasticoptimization,2017. Dmitry Lepikhin, HyoukJoong Lee, Yuanzhong Xu, Dehao Ch'
+  #6  p3-4       score=0.5879
+       '.Wedeferthestudy ontaskperformancetoSection5. 3 BatchSize 32 16 1 SequenceLength 512 256 128 |Θ| 0.5M 11M 11M Fine-Tune/LoRA 1449.4±0.8 338.0±0.6 19.8'
+  #7  p13-13     score=0.5865
+       ',TomHenighan,RewonChild,AdityaRamesh,DanielM. Ziegler,JeffreyWu,ClemensWinter,ChristopherHesse,MarkChen,EricSigler,MateuszLitwin, Scott Gray, Benjamin'
+  #8  p8-8       score=0.5844
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+  #9  p19-20     score=0.5807
+       'Size 32 RoBERTalarge #Epochs 10 5 10 10 5 20 20 10 AdptH(6M)† LearningRate 3E-05 3E-04 3E-04 3E-04 3E-04 3E-04 3E-04 3E-04 Bottleneckr 64 MaxSeq.Len. '
+  #10 p9-9       score=0.5800 ★ GOLD
+       '–wherefine-tuningontask-specificdataafterpre- training on general domain data provides a significant performance gain compared to training on task-spe'
+  #11 p1-2       score=0.5776
+       'dford et al., b) or RoBERTa large (Liu et al., 2019) to a 𝐴=𝒩(0,𝜎2) critical deployment challenge for GPT-3 (Brown et al., 2020) with 𝑑 𝑑 175billiontr'
+  #12 p23-23     score=0.5775
+       'l =0 76.1M 64.9 87.9 p i r =1 7.1M 71.9 89.8 r =4 21.2M 73.2 91.0 AdapterH r =8 40.1M 73.2 91.5 r =16 77.9M 73.2 91.5 r =64 304.4M 72.6 91.5 r =2 4.7M'
+  #13 p5-5       score=0.5757
+       'al., 2021), and GPT-2 (Radford et al., b), before scaling up to GPT-3 175B (Brown et al., 2020). Our experiments cover a wide range of tasks, from nat'
+  #14 p25-26     score=0.5740
+       'as20. Inotherwords,thereare(generallyspeaking)fourfeaturedirectionsineachlayer(outofthe entirefeaturespacefromthepre-trainedmodelW),thatneedtobeamplif'
+  #15 p22-22     score=0.5716
+       'Prefix(0.77M) 47.7 63.4 56.3 .39 .45 .42 .48 .34 .40 LoRA(0.77M) 48.4 64.0 57.0 .39 .45 .42 .45 .32 .38 ±.3 ±.3 ±.1 Table14: GPT-2withdifferentadaptat'
+  #16 p23-24     score=0.5707
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #17 p15-15     score=0.5704
+       'arners. pp. 24,b. PranavRajpurkar,RobinJia,andPercyLiang.Knowwhatyoudon’tknow:Unanswerablequestions forsquad. CoRR,abs/1806.03822,2018. URLhttp://arxi'
+  #18 p5-5       score=0.5694
+       'merarchitecture, therearefourweightmatricesin theself-attentionmodule(W ,W ,W ,W )andtwointheMLPmodule.WetreatW (orW ,W ) q k v o q k v asasinglematri'
+  #19 p10-10     score=0.5670
+       '8 4 4 2 WikiSQL(±0.5%) 70.4 70.0 73.0 73.2 71.4 73.7 73.7 MultiNLI(±0.1%) 91.0 90.8 91.0 91.3 91.3 91.3 91.7 Table5: ValidationaccuracyonWikiSQLandMul'
+  #20 p13-13     score=0.5665
+       'and Jason Weston. A unified architecture for natural language processing: deep neural networks with multitask learning. In Proceedings of the 25th int'
+
+================================================================================
+en_042: How does LoRA handle different downstream tasks?
+gold_page = 2
+gold_keywords = ['replace', 'A and B']
+================================================================================
+  #1  p18-18     score=0.6728
+       'the 14 total categories are not seen during training, but are represented in the test set, evaluation is typically broken out by “seen” categories (S)'
+  #2  p23-24     score=0.6686
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #3  p5-5       score=0.6634
+       'thecheckpoint sizeisreducedbyroughly10,000×(from350GBto35MB)4.Thisallowsustotrainwithsignifi- cantlyfewerGPUsandavoidI/Obottlenecks. Anotherbenefitist'
+  #4  p2-2       score=0.6546 ★ GOLD
+       'itchtasksbyreplacingthe matricesAandB inFigure1, reducingthestoragerequirementandtask-switchingover- headsignificantly. • LoRA makes training more eff'
+  #5  p1-1       score=0.6533
+       'LORA: LOW-RANK ADAPTATION OF LARGE LAN- GUAGE MODELS EdwardHu∗ YelongShen∗ PhillipWallis ZeyuanAllen-Zhu YuanzhiLi SheanWang LuWang WeizhuChen Microso'
+  #6  p12-13     score=0.6508
+       'input sequencelengthwhileretaininghighmodelquality. Importantly,itallowsforquicktask-switching whendeployedasaservicebysharingthevastmajorityofthemode'
+  #7  p20-21     score=0.6395
+       'ing q k v o hyperparametersusedinourGPT-3experimentsarelistedinTable12. E COMBINING LORA WITH PREFIX TUNING LoRAcanbenaturallycombinedwithexistingpref'
+  #8  p2-2       score=0.6389 ★ GOLD
+       ',2020;Liuetal.,2021)(Section3). Moreimportantly,thesemethodoftenfailto matchthefine-tuningbaselines,posingatrade-offbetweenefficiencyandmodelquality. '
+  #9  p21-21     score=0.6372
+       'lldatasetsaftertuninglearningrate. rally,wereplacethemaftereveryTransformerblockwithaninputagnosticvector. Thus,boththe embeddingsandsubsequentTransfo'
+  #10 p6-7       score=0.6336
+       '×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto. LoRA model LoRA 6 Model&Method #Trainable E2ENLGChallenge Parameters BLEU NIST MET ROUGE-L CIDEr '
+  #11 p1-1       score=0.6332
+       'and the GPUmemoryrequirementby3times. LoRAperformson-parorbetterthanfine- tuninginmodelqualityonRoBERTa,DeBERTa,GPT-2,andGPT-3,despitehav- ingfewertra'
+  #12 p4-5       score=0.6269
+       'settingtheLoRArankrtotherankofthepre-trainedweightmatrices. In otherwords,asweincreasethenumberoftrainableparameters3,trainingLoRAroughlyconverges tot'
+  #13 p1-2       score=0.6268 ★ GOLD
+       'dford et al., b) or RoBERTa large (Liu et al., 2019) to a 𝐴=𝒩(0,𝜎2) critical deployment challenge for GPT-3 (Brown et al., 2020) with 𝑑 𝑑 175billiontr'
+  #14 p22-22     score=0.6261
+       ',PrefixEmbedandPrefixLayerperformsverypoorlyonMNLI-100dataset,with PrefixEmbedperformingonlyslightlybetterthanrandomchance(37.6%vs. 33.3%). PrefixLaye'
+  #15 p8-8       score=0.6258
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+  #16 p23-23     score=0.6254
+       '4 151.1M 75.9 91.1 q v p i r =r =64,l =8,l =4 302.1M 76.2 91.3 q v p i LoRA+PL r =r =8,l =8,l =4 52.8M 72.9 90.2 q v p i Table15:Hyperparameteranalysi'
+  #17 p17-17     score=0.6245
+       'rningonGPT-3(Brownetal.,2020). B INFERENCE LATENCY INTRODUCED BY ADAPTER LAYERS Adapterlayersareexternalmodulesaddedtoapre-trainedmodelinasequentialma'
+  #18 p21-22     score=0.6229
+       'et al., 2017) following the setup of Li & Liang (2021). The result is shown in Table 13. Similar to our result on E2E NLG Challenge, reported in Secti'
+  #19 p10-10     score=0.6208
+       'performance? 2) Is the “optimal” adaptation matrix ∆W really rank- deficient? Ifso,whatisagoodranktouseinpractice? 3)Whatistheconnectionbetween∆W and '
+  #20 p7-8       score=0.6204
+       ') is a more recent variant of BERT that is trained on a much larger scale and performs very competitively on benchmarks such as GLUE (Wang et al., 201'
+
+================================================================================
+en_044: What is the LoRA configuration in RoBERTa experiments?
+gold_page = 18
+gold_keywords = ['rq=rv=8']
+================================================================================
+  #1  p23-24     score=0.7384
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #2  p19-19     score=0.7289
+       '.Len. 512 BatchSize 4 4 4 4 4 4 8 8 #Epochs 10 10 20 20 10 20 20 30 RoBERTalarge LearningRate 3E-04 4E-04 3E-04 2E-04 2E-04 3E-04 4E-04 2E-04 LoRA LoR'
+  #3  p18-18     score=0.7264 ★ GOLD
+       'the 14 total categories are not seen during training, but are represented in the test set, evaluation is typically broken out by “seen” categories (S)'
+  #4  p2-2       score=0.7208
+       'itchtasksbyreplacingthe matricesAandB inFigure1, reducingthestoragerequirementandtask-switchingover- headsignificantly. • LoRA makes training more eff'
+  #5  p6-7       score=0.7200
+       '×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto. LoRA model LoRA 6 Model&Method #Trainable E2ENLGChallenge Parameters BLEU NIST MET ROUGE-L CIDEr '
+  #6  p2-2       score=0.7150
+       ',2020;Liuetal.,2021)(Section3). Moreimportantly,thesemethodoftenfailto matchthefine-tuningbaselines,posingatrade-offbetweenefficiencyandmodelquality. '
+  #7  p23-23     score=0.7122
+       '4 151.1M 75.9 91.1 q v p i r =r =64,l =8,l =4 302.1M 76.2 91.3 q v p i LoRA+PL r =r =8,l =8,l =4 52.8M 72.9 90.2 q v p i Table15:Hyperparameteranalysi'
+  #8  p1-1       score=0.7082
+       'LORA: LOW-RANK ADAPTATION OF LARGE LAN- GUAGE MODELS EdwardHu∗ YelongShen∗ PhillipWallis ZeyuanAllen-Zhu YuanzhiLi SheanWang LuWang WeizhuChen Microso'
+  #9  p20-21     score=0.7065
+       'ing q k v o hyperparametersusedinourGPT-3experimentsarelistedinTable12. E COMBINING LORA WITH PREFIX TUNING LoRAcanbenaturallycombinedwithexistingpref'
+  #10 p23-23     score=0.6970
+       'l =0 76.1M 64.9 87.9 p i r =1 7.1M 71.9 89.8 r =4 21.2M 73.2 91.0 AdapterH r =8 40.1M 73.2 91.5 r =16 77.9M 73.2 91.5 r =64 304.4M 72.6 91.5 r =2 4.7M'
+  #11 p22-22     score=0.6964
+       ',PrefixEmbedandPrefixLayerperformsverypoorlyonMNLI-100dataset,with PrefixEmbedperformingonlyslightlybetterthanrandomchance(37.6%vs. 33.3%). PrefixLaye'
+  #12 p12-12     score=0.6909
+       'righttopr singularvector q directionsofeither(1)∆W ,(2)W ,or(3)arandommatrix. Theweightmatricesaretakenfrom q q the48thlayerofGPT-3. Wedrawseveralconc'
+  #13 p5-5       score=0.6883
+       'thecheckpoint sizeisreducedbyroughly10,000×(from350GBto35MB)4.Thisallowsustotrainwithsignifi- cantlyfewerGPUsandavoidI/Obottlenecks. Anotherbenefitist'
+  #14 p10-10     score=0.6827
+       'performance? 2) Is the “optimal” adaptation matrix ∆W really rank- deficient? Ifso,whatisagoodranktouseinpractice? 3)Whatistheconnectionbetween∆W and '
+  #15 p18-19     score=0.6825 ★ GOLD
+       'the hyperparameters used in our runs inTable9. D.2 DEBERTA WeagaintrainusingAdamWwithalinearlearningratedecayschedule. FollowingHeetal.(2021), wetunel'
+  #16 p11-11     score=0.6822
+       'keanimportantobservationfromFigure3. Directions corresponding to the top singular vector overlap significantly between A and A , while others do not. '
+  #17 p8-8       score=0.6814
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+  #18 p21-21     score=0.6779
+       'lldatasetsaftertuninglearningrate. rally,wereplacethemaftereveryTransformerblockwithaninputagnosticvector. Thus,boththe embeddingsandsubsequentTransfo'
+  #19 p17-17     score=0.6773
+       'rningonGPT-3(Brownetal.,2020). B INFERENCE LATENCY INTRODUCED BY ADAPTER LAYERS Adapterlayersareexternalmodulesaddedtoapre-trainedmodelinasequentialma'
+  #20 p20-20     score=0.6746
+       '1 0.1 0.0 BatchSize 8 #Epoch 5 WarmupSteps 500 LearningRateSchedule Linear LabelSmooth 0.1 0.1 0.0 LearningRate 0.0002 Adaptation r =r =4 q v LoRAα 32'
+
+================================================================================
+en_045: What is the LoRA α value used for GPT-2?
+gold_page = 20
+gold_keywords = ['32']
+================================================================================
+  #1  p6-7       score=0.7779
+       '×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto. LoRA model LoRA 6 Model&Method #Trainable E2ENLGChallenge Parameters BLEU NIST MET ROUGE-L CIDEr '
+  #2  p8-8       score=0.7560
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+  #3  p21-22     score=0.7420
+       'et al., 2017) following the setup of Li & Liang (2021). The result is shown in Table 13. Similar to our result on E2E NLG Challenge, reported in Secti'
+  #4  p22-22     score=0.7386
+       'Prefix(0.77M) 47.7 63.4 56.3 .39 .45 .42 .48 .34 .40 LoRA(0.77M) 48.4 64.0 57.0 .39 .45 .42 .45 .32 .38 ±.3 ±.3 ±.1 Table14: GPT-2withdifferentadaptat'
+  #5  p21-22     score=0.7366
+       '. 21 Method WebNLG BLEU↑ MET↑ TER↓ U S A U S A U S A GPT-2Medium Fine-Tune(354M) 27.7 64.2 46.5 .30 .45 .38 .76 .33 .53 AdapterL(0.37M) 45.1 54.5 50.2'
+  #6  p23-23     score=0.7200
+       '4 151.1M 75.9 91.1 q v p i r =r =64,l =8,l =4 302.1M 76.2 91.3 q v p i LoRA+PL r =r =8,l =8,l =4 52.8M 72.9 90.2 q v p i Table15:Hyperparameteranalysi'
+  #7  p23-23     score=0.7104
+       'l =0 76.1M 64.9 87.9 p i r =1 7.1M 71.9 89.8 r =4 21.2M 73.2 91.0 AdapterH r =8 40.1M 73.2 91.5 r =16 77.9M 73.2 91.5 r =64 304.4M 72.6 91.5 r =2 4.7M'
+  #8  p5-5       score=0.7037
+       'thecheckpoint sizeisreducedbyroughly10,000×(from350GBto35MB)4.Thisallowsustotrainwithsignifi- cantlyfewerGPUsandavoidI/Obottlenecks. Anotherbenefitist'
+  #9  p23-24     score=0.6942
+       '. We evaluate with the full validation set. LoRA performsexhibitsfavorablesample-efficiencycomparedtoothermethods,includingfine-tuning. To be concrete'
+  #10 p5-6       score=0.6882
+       'dates.Asimple variantistoupdateonlysomelayerswhilefreezingothers. Weincludeonesuchbaselinereported inpriorwork(Li&Liang,2021)onGPT-2,whichadaptsjustth'
+  #11 p26-26     score=0.6880
+       '30 256 1.16 68.92 8.6982 0.4629 0.7128 2.5012 512 1.16 68.78 8.6857 0.4637 0.7128 2.5025 1024 1.17 69.37 8.7495 0.4659 0.7149 2.5090 Table 18: Validat'
+  #12 p19-19     score=0.6826
+       '.Len. 512 BatchSize 4 4 4 4 4 4 8 8 #Epochs 10 10 20 20 10 20 20 30 RoBERTalarge LearningRate 3E-04 4E-04 3E-04 2E-04 2E-04 3E-04 4E-04 2E-04 LoRA LoR'
+  #13 p20-21     score=0.6813 ★ GOLD
+       'ing q k v o hyperparametersusedinourGPT-3experimentsarelistedinTable12. E COMBINING LORA WITH PREFIX TUNING LoRAcanbenaturallycombinedwithexistingpref'
+  #14 p22-22     score=0.6756
+       ',PrefixEmbedandPrefixLayerperformsverypoorlyonMNLI-100dataset,with PrefixEmbedperformingonlyslightlybetterthanrandomchance(37.6%vs. 33.3%). PrefixLaye'
+  #15 p1-1       score=0.6743
+       'LORA: LOW-RANK ADAPTATION OF LARGE LAN- GUAGE MODELS EdwardHu∗ YelongShen∗ PhillipWallis ZeyuanAllen-Zhu YuanzhiLi SheanWang LuWang WeizhuChen Microso'
+  #16 p7-7       score=0.6722
+       'erL) 0.88M 69.1 8.68 46.3 71.4 2.49 ±.1 ±.03 ±.0 ±.2 ±.0 GPT-2L(AdapterL) 23.00M 68.9 8.70 46.1 71.3 2.45 ±.3 ±.04 ±.1 ±.2 ±.02 GPT-2L(PreLayer)* 0.77'
+  #17 p1-1       score=0.6683
+       'and the GPUmemoryrequirementby3times. LoRAperformson-parorbetterthanfine- tuninginmodelqualityonRoBERTa,DeBERTa,GPT-2,andGPT-3,despitehav- ingfewertra'
+  #18 p19-20     score=0.6636 ★ GOLD
+       'Liang (2021). D.4 GPT-3 ForallGPT-3experiments,wetrainusingAdamW(Loshchilov&Hutter,2017)for2epochswith abatchsizeof128samplesandaweightdecayfactorof0.'
+  #19 p7-8       score=0.6601
+       ') is a more recent variant of BERT that is trained on a much larger scale and performs very competitively on benchmarks such as GLUE (Wang et al., 201'
+  #20 p6-6       score=0.6515
+       '.8 93.1 90.2 71.5 89.7 84.4 base ±.0 ±.1 ±1.1 ±.4 ±.1 ±.0 ±2.7 ±.3 RoB (AdptD)* 0.9M 87.3 94.7 88.4 62.6 93.0 90.6 75.9 90.3 85.4 base ±.1 ±.3 ±.1 ±.9'
+
+================================================================================
+en_048: What does the paper release for public use?
+gold_page = 1
+gold_keywords = ['package', 'checkpoints']
+================================================================================
+  #1  p5-6       score=0.5628
+       'dates.Asimple variantistoupdateonlysomelayerswhilefreezingothers. Weincludeonesuchbaselinereported inpriorwork(Li&Liang,2021)onGPT-2,whichadaptsjustth'
+  #2  p16-16     score=0.5233
+       'Lhoest, and Alexander M. Rush. Transformers: State-of-the-art natural language processing. In Proceedings of the 2020 Conference on Empirical Methods '
+  #3  p17-18     score=0.5213
+       'Section 5.1 formoredetailsonthedesigns. Weplottheslow-downinpercentagecomparedtotheno-adapter baselineinFigure5. 35 30 25 20 15 10 5 0 r HretpadA 0 01'
+  #4  p23-23     score=0.5158
+       'l =0 76.1M 64.9 87.9 p i r =1 7.1M 71.9 89.8 r =4 21.2M 73.2 91.0 AdapterH r =8 40.1M 73.2 91.5 r =16 77.9M 73.2 91.5 r =64 304.4M 72.6 91.5 r =2 4.7M'
+  #5  p13-14     score=0.5130
+       'WP2005), 2005. URL https://aclanthology.org/I05-5002. Claire Gardent, Anastasia Shimorina, Shashi Narayan, and Laura Perez-Beltrachini. The webnlg cha'
+  #6  p7-7       score=0.5086
+       'erL) 0.88M 69.1 8.68 46.3 71.4 2.49 ±.1 ±.03 ±.0 ±.2 ±.0 GPT-2L(AdapterL) 23.00M 68.9 8.70 46.1 71.3 2.45 ±.3 ±.04 ±.1 ±.2 ±.02 GPT-2L(PreLayer)* 0.77'
+  #7  p8-8       score=0.5078
+       '8 89.5 52.0/28.0/44.5 GPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5 GPT-3(PreEmbed) 3.2M 63.1 88.6 48.3/24.2/40.5 GPT-3(PreLayer) 20.2M 70.1 89.5 50.8/'
+  #8  p6-7       score=0.5034
+       '×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto. LoRA model LoRA 6 Model&Method #Trainable E2ENLGChallenge Parameters BLEU NIST MET ROUGE-L CIDEr '
+  #9  p17-18     score=0.4993
+       'P8 (question-answering), RTE (inference), 8https://quoradata.quora.com/First-Quora-Dataset-Release-Question-Pairs 17 and STS-B (textual similarity, Ce'
+  #10 p1-2       score=0.4986 ★ GOLD
+       'dford et al., b) or RoBERTa large (Liu et al., 2019) to a 𝐴=𝒩(0,𝜎2) critical deployment challenge for GPT-3 (Brown et al., 2020) with 𝑑 𝑑 175billiontr'
+  #11 p16-16     score=0.4983
+       'R. Bowman. Superglue: A stickier benchmark for general-purpose language understandingsystems,2020. AlexWarstadt,AmanpreetSingh,andSamuelRBowman. Neura'
+  #12 p18-19     score=0.4975
+       'the hyperparameters used in our runs inTable9. D.2 DEBERTA WeagaintrainusingAdamWwithalinearlearningratedecayschedule. FollowingHeetal.(2021), wetunel'
+  #13 p19-19     score=0.4960
+       '.Len. 512 BatchSize 4 4 4 4 4 4 8 8 #Epochs 10 10 20 20 10 20 20 30 RoBERTalarge LearningRate 3E-04 4E-04 3E-04 2E-04 2E-04 3E-04 4E-04 2E-04 LoRA LoR'
+  #14 p19-20     score=0.4928
+       'Size 32 RoBERTalarge #Epochs 10 5 10 10 5 20 20 10 AdptH(6M)† LearningRate 3E-05 3E-04 3E-04 3E-04 3E-04 3E-04 3E-04 3E-04 Bottleneckr 64 MaxSeq.Len. '
+  #15 p6-7       score=0.4912
+       ') proposed a more efficient design with the adapterlayerappliedonlyaftertheMLPmoduleandafteraLayerNorm. WecallitAdapterL. This isverysimilartoanotherd'
+  #16 p13-13     score=0.4910
+       '/2012.13255. ZeyuanAllen-ZhuandYuanzhiLi. WhatCanResNetLearnEfficiently,GoingBeyondKernels? In NeurIPS,2019. Fullversionavailableathttp://arxiv.org/ab'
+  #17 p18-18     score=0.4905
+       'the 14 total categories are not seen during training, but are represented in the test set, evaluation is typically broken out by “seen” categories (S)'
+  #18 p21-22     score=0.4892
+       '. 21 Method WebNLG BLEU↑ MET↑ TER↓ U S A U S A U S A GPT-2Medium Fine-Tune(354M) 27.7 64.2 46.5 .30 .45 .38 .76 .33 .53 AdapterL(0.37M) 45.1 54.5 50.2'
+  #19 p15-15     score=0.4891
+       'arners. pp. 24,b. PranavRajpurkar,RobinJia,andPercyLiang.Knowwhatyoudon’tknow:Unanswerablequestions forsquad. CoRR,abs/1806.03822,2018. URLhttp://arxi'
+  #20 p13-13     score=0.4879
+       ',TomHenighan,RewonChild,AdityaRamesh,DanielM. Ziegler,JeffreyWu,ClemensWinter,ChristopherHesse,MarkChen,EricSigler,MateuszLitwin, Scott Gray, Benjamin'
