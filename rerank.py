@@ -15,6 +15,7 @@
 
 【对外暴露】
   - rerank(query, candidates, final_k=4) -> list[RetrievedChunk]
+  - warmup() -> None ：预热模型，供 app.py 启动时调用，避免用户首次提问等待。
 
 【依赖】
   - sentence-transformers ：提供 CrossEncoder 类。
@@ -61,6 +62,31 @@ def _get_model() -> CrossEncoder:
       通过 model_kwargs 禁用 safetensors，强制回退到 .bin 权重。
     """
     return CrossEncoder(MODEL_PATH, model_kwargs={"use_safetensors": False})
+
+
+def warmup() -> None:
+    """预热重排模型：提前触发加载，把 1.1GB 模型按进内存。
+
+    【背景】
+      云端免费 CPU 冷启动时，CrossEncoder 是懒加载的——只有第一次调用
+      rerank() 才会去磁盘读 1.1GB 模型，导致用户首次提问等待约 63 秒。
+      本函数在 app.py 启动阶段主动调用一次，把模型加载成本从「用户提问时」
+      转移到「服务启动时」，用户第一次提问就只需要等约 20 秒（检索 + LLM）。
+
+    【为什么放在 rerank.py 而不是 app.py】
+      避免 app.py 直接访问 rerank 的私有函数 _get_model()。
+      在模块内部提供公开的 warmup()，职责清晰，且未来如果重排逻辑
+      演进（例如换成 lazy 加载别的资源），预热逻辑也跟着一起演进。
+
+    【调用方式】
+      仅在 app.py 的 __main__ 块启动时调用一次。
+      由于 _get_model() 有 @lru_cache(maxsize=1)，重复调用不会重复加载。
+
+    【错误语义】
+      本函数不捕获异常。如果模型文件缺失，这里会抛异常，
+      由调用方（app.py）决定是打日志继续还是终止启动。
+    """
+    _get_model()
 
 
 def rerank(query: str, candidates: list[RetrievedChunk], final_k: int = 4) -> list[RetrievedChunk]:

@@ -17,6 +17,7 @@
 【依赖】
   - gradio ：界面库（已降级至 5.49.1，兼容魔搭前端环境）。
   - ingest / index_store / qa ：复用前三块的业务逻辑。
+  - rerank ：启动预热时使用（局部 import，避免模块被 import 时连带加载）。
 """
 import os
 import gradio as gr
@@ -153,6 +154,23 @@ if __name__ == "__main__":
             print("未找到 data/sample.pdf，跳过预置索引。")
     except Exception as e:
         print(f"启动时自动索引失败（不影响应用启动）：{e}")
+
+    # 【新增 / 性能优化】预热重排模型
+    # 【背景】云端免费 CPU 冷启动时，CrossEncoder 是懒加载的——只有第一次
+    #        调用 rerank() 才会读 1.1GB 模型。实测用户首次提问需要等 ~63 秒，
+    #        第二次起只要 ~20 秒。本段把模型加载成本从「用户提问时」转移到
+    #        「服务启动时」，用户第一次提问就只需等约 20 秒（检索 + LLM）。
+    # 【为什么用 try/except】预热失败（例如模型文件缺失）不应阻止应用启动；
+    #        用户提问时 rerank() 内部仍会重新触发加载，只是会慢一点。
+    # 【为什么局部 import】避免 build_app 模块被外部 import 时连带加载 rerank，
+    #        保持模块职责单一（界面模块不依赖重排模块，除非真的要启动服务）。
+    print("正在预热重排模型（约需 30 秒，用户无感）...")
+    try:
+        from rerank import warmup as _warmup_rerank
+        _warmup_rerank()
+        print("重排模型预热完成。")
+    except Exception as e:
+        print(f"重排模型预热失败（不影响应用启动，提问时会尝试重新加载）：{e}")
 
     demo = build_app()
     # Gradio 5.x 的 SSE 机制本身不会超时，无需设置 timeout
