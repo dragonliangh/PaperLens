@@ -1,0 +1,6 @@
+models/
+data/chroma/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
