@@ -9,9 +9,17 @@
 """
 import os
 # 强制离线：必须在 import transformers 之前设置才生效。
+# 【关键补丁】PyTorch 2.6+ 默认 weights_only=True，会拒绝加载 .bin 权重中的非张量对象。
+# 必须在 import transformers 之前 monkey-patch torch.load，强制 weights_only=False。
+import torch as _torch
+_orig_torch_load = _torch.load
+def _patched_torch_load(*args, **kwargs):
+    kwargs.setdefault("weights_only", False)
+    return _orig_torch_load(*args, **kwargs)
+_torch.load = _patched_torch_load
+
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
 import re                       # 用来写章节标题的正则
 from dataclasses import dataclass   # 用 dataclass 定义 Chunk，字段有名字、可读性好
 from functools import lru_cache     # 缓存 tokenizer，避免重复加载
@@ -19,7 +27,10 @@ from functools import lru_cache     # 缓存 tokenizer，避免重复加载
 import pdfplumber               # PDF 解析库
 from transformers import AutoTokenizer  # 从 Hugging Face 加载分词器
 
-# tokenizer 的本地路径（与嵌入模型在同一个目录）。
+# tokenizer 的本地路径。
+# 为什么不是 "BAAI/bge-small-en-v1.5" 这个 HF 仓库名？
+#   因为当前网络无法稳定访问 HF / hf-mirror，改为提前把文件下载到本地，
+#   从本地目录加载，彻底离线。具体下载过程见 README「离线模型」一节。
 TOKENIZER_NAME = "./models/bge-small-en-v1.5"
 
 

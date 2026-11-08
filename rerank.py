@@ -22,6 +22,14 @@
 """
 import os
 # 强制离线：必须在 import sentence_transformers 之前设置才生效。
+# 【关键补丁】PyTorch 2.6+ 默认 weights_only=True，会拒绝加载 .bin 权重中的非张量对象。
+import torch as _torch
+_orig_torch_load = _torch.load
+def _patched_torch_load(*args, **kwargs):
+    kwargs.setdefault("weights_only", False)
+    return _orig_torch_load(*args, **kwargs)
+_torch.load = _patched_torch_load
+
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
@@ -39,12 +47,20 @@ MODEL_PATH = "./models/bge-reranker-base"
 def _get_model() -> CrossEncoder:
     """加载并缓存 Cross-Encoder 模型，进程内只加载一次。
 
-    【历史坑位说明】
-      云端曾因 .safetensors 损坏 + .bin 触发 weights_only 报错。
-      最终方案：本地重生成干净的 .safetensors 后推送，
-      云端按默认路径加载 safetensors，不走 torch.load，根除问题。
+    为什么缓存：
+      模型文件约 1.1GB，加载需要数秒到十几秒。
+      重排函数在每次提问时都会调用，用 lru_cache 避免重复加载的开销。
+
+    性能隐患 / 假设：
+      假设 MODEL_PATH 下的文件完整（config.json, model.safetensors 等）。
+      若文件缺失，这里会抛异常，按契约不吞异常。
+
+    【云端修复】强制使用 pytorch_model.bin：
+      云端 Git LFS 拉取的 model.safetensors 可能存在文件头损坏
+      (Error while deserializing header: header too large)，
+      通过 model_kwargs 禁用 safetensors，强制回退到 .bin 权重。
     """
-    return CrossEncoder(MODEL_PATH)
+    return CrossEncoder(MODEL_PATH, model_kwargs={"use_safetensors": False})
 
 
 def rerank(query: str, candidates: list[RetrievedChunk], final_k: int = 4) -> list[RetrievedChunk]:
