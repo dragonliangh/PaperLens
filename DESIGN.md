@@ -498,3 +498,81 @@
 | C31 | `evaluate_ctrl.py` docstring 从「20 道题（en 10 + zh 10）」改为「20 道题（中英各一版，40 条记录）」 | 对照组规模最终定为 20 道题 × 2 语言 = 40 条记录，初版 docstring 误写为 20 条记录 |
 | C32 | `ctrl_eval_set.json` 每条补 `answerable: true` 和 `category: "answerable"`；`evaluate_ctrl.py` 的 `load_ctrl_eval_set` 退回纯 `json.load` | 保持两个评估集 JSON 结构一致，避免在代码里补字段 |
 | C33 | 对照组最终结论采用 B+C 组合：保留数据、按 type 分组呈现、诚实写「假设部分证伪」 | 不换题（不美化指标），通过分组暴露「T1 满分 T5 最弱」的方法能力分化 |
+| C34 | 阶段 2 契约 18a 用例从 `rq=rv=8` 改为 `AdamW` | 诊断脚本遍历 sample.pdf 全部 84 个 chunk，含 `rq`/`rv` token 的 chunk 数为 0。根因是 PDF 对下标 `q`/`v` 的字符提取不可靠，`rq=rv=8` 未被完整抽出，BM25 只能靠高频 token `8` 命中、区分度被稀释。这是第 1 块「公式、表格抽取不保证正确」已知限制的具体表现，非 BM25 实现缺陷。改用正文词 `AdamW`（第 19 页 GPT-3 实验配置，PDF 可可靠抽出），契约 18a 意图（BM25 对精确 token 能命中）不变。 |
+
+---
+
+## 第 8 块：混合检索（阶段 2，已回滚）
+
+### 背景
+
+阶段 2 目标：在向量检索外加 BM25 关键词检索一路，用 RRF 融合，提升英文 Recall。
+按分阶段流程，先落 2a（`hybrid_search.py` + `test_hybrid.py` + `qa.py` 接入），再落 2b（`evaluate_hybrid.py` 量化），最后按数据决定保留或回滚。
+
+**结论：实测无净提升，已回滚接入，代码保留作多文档场景储备。**
+
+### 契约（已确认，2a）
+
+**接口（`hybrid_search.py`）**
+- `bm25_search(query, top_k=20) -> list[Chunk]`：英文 BM25 检索，中文返回 `[]`，空输入/空索引返回 `[]`，不带分数。
+- `search_hybrid(query, top_k=20) -> list[RetrievedChunk]`：英文 RRF 融合；中文透传 `index_store.search()`。
+- `rebuild_bm25() -> None`：从 Chroma 读全部 chunk 重建内存 BM25 索引。
+
+**RRF**
+- `score = Σ 1/(60 + rank_i)`，按 `chunk_id` 去重，降序截 top_k。
+
+**生命周期**
+- 数据源：从 Chroma 读（1a）；建表时机：首次 `bm25_search` 懒加载（2a）；同步：显式 `rebuild_bm25()`（3b + 防法 1）。
+- `search_hybrid` 对 `en` 返回 RRF 分数（约 0~0.033，**非余弦**），对 `zh` 返回余弦分数；**下游 rerank 必须覆盖，不得直接用于拒答阈值**。
+
+**分词**
+- 英文正则 `[a-z0-9]+`；中文不做 BM25，不引入 jieba。
+
+**依赖**
+- 新增 `rank_bm25`。
+
+### 实测结果（`hybrid_eval_report.json` / `diag_hybrid_report.json`）
+
+| 指标（EN） | A 纯向量 | B 混合 | Δ |
+|---|---|---|---|
+| 粗排 Recall@5 | 0.60 | 0.58 | -0.02 |
+| 粗排 MRR@20 | 0.386 | 0.436 | +0.05 |
+| 精排 Recall@4 | 0.64 | 0.64 | 0 |
+| 精排 MRR@4 | 0.428 | 0.410 | -0.018 |
+
+**中文 A/B 完全一致**（`search_hybrid` 对 zh 透传，验证通过）。
+
+诊断（`diag_hybrid_report.json`）：
+- D1 融合生效（`fusion_swallowed=0`），但 **50/100 题两路完全一致**。
+- D3 **BM25 单独 R@20 = 0.46，仅 1.93 倍随机基线**（随机 0.238）→ 排序能力弱。
+- D4 概括型占 34%，数值型受 PDF 提取拖累（`rq=rv=8` token 数为 0，见 C34）。
+- D5 McNemar 不一致对 n=4（2 救 2 推），**样本不足，不输出 p 值**；R@5 差值 95% CI `[-0.08, 0.06]` **含 0**，差异是噪声。
+
+**结论：BM25 在单文档场景前提不满足（IDF 失效、两路同质、擅长题型稀缺），-0.02 是 1 个标准误的噪声，回滚。**
+
+### 设计决策
+
+| # | 决策 | 原因 | 放弃的替代及代价 |
+|---|---|---|---|
+| H1 | BM25 状态用模块级全局变量，不用 `lru_cache` | 重建语义直白 | `lru_cache`：`cache_clear` 语义绕 |
+| H2 | `_is_zh` 内联正则，不 import qa | 避免循环依赖 | import qa：循环 import |
+| H3 | `_rrf_fuse` 用 dict 排名映射 | 缺失路 O(1) 判断 | list + `index()`：O(n²) |
+| H4 | `bm25_search` 返回 `list[Chunk]` 不带分数 | RRF 只看排名，带分数徒增误用 | 带 BM25 原始分数：下游可能误当余弦 |
+| H5 | `search_hybrid` 对 zh 透传 | 中文 BM25 是噪声，透传保证与现状一致 | 中文也 RRF：可能劣化 |
+| H6 | `qa.py` 只改 1 行 import 别名 | 签名不变，其余零改动 | 改多处调用点：易漏 |
+| H7 | 从 Chroma 读建表 | 数据源唯一 | 从 PDF 重解析：可能不一致 |
+| H8 | 空 corpus 降级 None | 契约 8b 不报错 | 建空 BM25Okapi：库内报错 |
+| H9 | 测试拆纯逻辑 + 集成两组 | 纯逻辑可进 CI | 全集成：CI 跑不动 |
+| 回滚 | 保留 `hybrid_search.py`，`qa.py` 改回纯向量 | 代码无误，多文档场景储备 | 删除：丢失储备 |
+
+### 变更记录
+
+| # | 变更 | 原因 |
+|---|---|---|
+| C35 | 阶段 2 回滚：`qa.py` 改回 `index_store.search`，`app.py` `_on_upload` 无 `rebuild_bm25`；`hybrid_search.py` / `test_hybrid.py` / `evaluate_hybrid.py` / `diag_hybrid.py` / `rank_bm25` 保留 | 实测单文档场景无净提升（见上表），BM25 前提不满足。保留代码作多文档储备，接入回滚以降复杂度。 |
+| C36 | 入口级测试 `test_on_upload_triggers_rebuild` 未纳入最终测试集 | 该测试被 `bm25_search` 懒加载兜底（`_on_upload` 不调 rebuild 时，懒加载也会读到新 Chroma），无法验证契约 2.4 的配对纪律。回滚后 `_on_upload` 不再 rebuild，测试删除，`test_hybrid.py` 回到 11 项。 |
+| C37 | 阶段 2a 契约 2.4 的 `_on_upload` rebuild 配对在生产入口未生效 | `app.py` 该调用始终为注释状态；`test_rebuild_sync` 是自包含测试，未覆盖生产入口。回滚后此缺口不再有影响，记录备查。 |
+| C38 | 阶段 3 流式：`_stream_llm` 的 `_call()` 标注 `-> Any`，`resp: Any` | zhipuai 类型 stub 把 `stream=True` 的返回错误推断为 `tuple[str, Any]`，运行时实际是 `Stream[ChatCompletionChunk]`（有 `.choices`）。Pylance 报 `chunk.choices` 未知属性。与 C10/C18 同源（stub 未按 stream 参数重载），运行时行为经 8 passed 验证不变。 |
+| C39 | 阶段 3 实测：首字延迟约 9 秒，瓶颈在重排不在 LLM；新增占位提示 | 流式只优化了 LLM 阶段（8.6 秒），但重排 8.7–9.2 秒在 LLM 之前串行阻塞。用户点发送后 9 秒内无任何反馈。修复：`_on_send` 立即 yield "正在检索并重排…"占位，真 token 到来时清空。19e 口径从"1–2 秒出首字"改为"重排完成后 1–2 秒出首字"。重排耗时优化记入后续阶段（需改 rerank.py 或换模型，超出阶段 3 范围）。 |
+| C40 | 阶段 4 降级与容错：`degraded` 事件 + `_error_to_message` + pending_prefix | ① `answer_stream` 新增第四种事件 `degraded{reason, fallback_count}`：rerank 抛异常时降级用粗排 top final_k 继续，不抛异常（可预期失败用事件表达，真异常仍抛）；`fallback_count = min(final_k, len(coarse_results))`，degraded 必为首事件、与 refused 互斥、之后仍发 citations。② D1 跳过阈值判断（C3 取舍：粗排余弦分与重排分不同量纲），qa.py 留注释、README 留痕。③ D5 防御分支：rerank 返回空 → refused(empty)。④ `app.py` 新增 `_error_to_message(exc)`：异常→友好文案（Key 缺失/限流/Chroma/兜底），靠关键字识别不引入新异常类型。⑤ `pending_prefix` 机制：degraded 不即时渲染，首 token 到达时拼接，避免空消息闪烁。⑥ 流中途异常永远 append 不重置，覆盖 D1+D2、D1+D3 叠加。⑦ 未知事件类型 print 到 stderr 不崩（向前兼容）。⑧ `answer()` 消费 stream 遇 degraded 静默忽略（非流式调用方对降级透明）。验收 20a–20g 全通过（15 passed）。 |
+| C41 | 阶段 5 结构化日志：loguru 双 sink + 汇总日志 + token 用量 + stream_options 探测 | ① 新增 `_setup_logging()`：控制台人类可读（`HH:mm:ss \| LEVEL \| message`）+ 文件 JSON（`logs/app.log`，`serialize=True`，按天轮转留 7 天）；幂等，重复调用不重复加 sink。② 新增 `_log_query()`：一条/请求汇总日志，字段含 `lang/query_len/retrieval_ms/rerank_ms/llm_ms/total_ms/n_candidates/top_score/refused/refuse_reason/degraded/degrade_reason/prompt_tokens/completion_tokens/total_tokens`；用 `logger.bind(**fields).info()` 让字段进 JSON 的 `record.extra`。③ `_stream_llm` 的 yield 从 `str` 改为 `tuple[str, Any]`（`"token"`/`"usage"`），`answer_stream` 消费元组、收集 usage、流结束打日志；`answer_stream` 对外 yield 协议不变（`app.py` 零改动），`RagAnswer.usage` 保持 None（D5）。④ 新增 `_supports_stream_options()`：模块加载时用 `inspect` 探测 zhipuai `create()` 是否接受 `stream_options`。zhipuai 2.1.5 不支持，直接传会抛 `TypeError`；原先"试错→降级"导致每次请求多打一次被拒请求 + WARNING，改为探测后不支持就直接不带。运行时降级分支只匹配明确的 `stream_options`/`include_usage` 关键词（去掉过宽的 `"unknown"`）。⑤ 删除 5 处 `print("[性能日志]...")`，信息并入汇总日志。⑥ `app.py` 的 `_error_to_message` 调用处加 `logger.error`（结构化：`error_type`/`error_msg`/`user_msg`），未知事件告警保留 `print(stderr)`（契约 5e）。⑦ `.gitignore` 加 `logs/`。验收 22a–22j 全通过（15 passed + 真实运行日志验证：中英文 token 用量、拒答 null、隐私无原文）。实测 `_supports_stream_options()` 返回 True，token 统计可用：英文 prompt=1692/completion=475，中文 prompt=1692/completion=583，`total = prompt + completion` 成立。 |

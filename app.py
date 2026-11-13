@@ -4,6 +4,9 @@
   把前三块的「命令行能力」包成一个网页：
     上传 PDF -> 建索引 -> 提问 -> 显示答案和引用。
   同时适配本地开发与 ModelScope Docker 云端部署。
+  阶段 3 起 _on_send 改为流式（yield），1-2 秒出第一个字。
+  阶段 4 起 _on_send 处理 degraded / 中断 / 异常，转成用户友好文案。
+  阶段 5 起异常日志走 loguru（复用 qa.logger），业务日志仍在 qa.py。
 
 【在架构中的位置】
   第 4/5 块，是用户接触的最终边界。
@@ -18,13 +21,30 @@
   - gradio ：界面库（已降级至 5.49.1，兼容魔搭前端环境）。
   - ingest / index_store / qa ：复用前三块的业务逻辑。
   - rerank ：启动预热时使用（局部 import，避免模块被 import 时连带加载）。
+  - loguru ：复用 qa.logger，记异常日志（阶段 5）。
+
+【历史修改痕迹】
+  - 第 4 块（初始版本）：_on_send 一次性返回完整答案。
+  - 阶段 2（已回滚）：_on_upload 曾加 rebuild_bm25 配对；实测无增量后移除。
+  - 阶段 3（本轮）：_on_send 改为 yield 流式；import answer_stream 替代 answer。
+  - 阶段 3（占位）：_on_send 立即 yield "正在检索并重排…"，解决重排 9 秒白屏。
+  - 阶段 4（本轮）：
+    * 新增 _error_to_message()：异常 → 用户友好文案（F3：文案归界面层）。
+    * _on_send 新增 pending_prefix 机制：degraded 不即时渲染，等首 token 到达时拼接。
+    * 流中途异常永远 append 而非覆盖现有 content（D1+D2、D1+D3 叠加场景）。
+    * 未知事件类型 print 到 stderr（G7），不崩，向前兼容。
+    * 引用区：D3（有半截答案）显示"（生成中断，无引用）"（G5）。
+  - 阶段 5（本轮）：
+    * _error_to_message 调用处加 logger.error 结构化日志（L2：app 只记异常）。
+    * 未知事件类型的 print(..., file=sys.stderr) 保留（契约 5e，不属业务日志）。
 """
 import os
+import sys
 import gradio as gr
 
 from ingest import parse_and_chunk
 from index_store import build_index, clear_index
-from qa import answer
+from qa import answer_stream, logger, REFUSAL_TEXT
 
 # ---------------------------------------------------------------------------
 # 界面文案集中定义，避免散落在组件定义里。
@@ -32,6 +52,9 @@ from qa import answer
 TITLE = "PaperLens — 学术论文 RAG 助手"
 SUBTITLE = "上传论文 PDF，基于原文回答问题，并给出页码级引用。"
 EMPTY_CITATIONS = "（无引用）"
+INTERRUPTED_CITATIONS = "（生成中断，无引用）"   # G5：D3 时引用区文案
+PLACEHOLDER = "正在检索并重排…"                   # 阶段 3：重排 9 秒的占位提示
+DEGRADED_PREFIX = "⚠️ 重排暂时不可用，以下基于粗排结果\n\n"   # 阶段 4：D1 降级前缀
 
 
 def _format_citations(citations) -> str:
@@ -44,6 +67,28 @@ def _format_citations(citations) -> str:
             f"{i}. `{c.doc_name}` p{c.page_start}-{c.page_end} — `{c.text_snippet}`"
         )
     return "\n".join(lines)
+
+
+def _error_to_message(exc: Exception) -> str:
+    """把异常转成用户能看懂的文案（阶段 4 / F3：文案归界面层）。
+
+    【为什么在 app.py 而不在 qa.py】
+      qa.py 的契约是"异常不吞、不包装"，它只负责抛；
+      把异常翻译成人话是"最终用户边界"的责任，归界面层。
+
+    【最小实现】靠消息关键字识别，不引入新异常类型（契约 4.9）。
+      脆弱性可接受：识别错也只是文案不精确，不影响功能。
+
+    【阶段 5】本函数只做映射，不记日志；日志在调用处记（便于带出 user_msg）。
+    """
+    msg = str(exc)
+    if "ZHIPU_API_KEY" in msg:
+        return "请先配置 ZHIPU_API_KEY"
+    if "429" in msg or "1302" in msg or "1305" in msg or "rate limit" in msg.lower():
+        return "生成服务繁忙，请稍后重试"
+    if "chroma" in msg.lower() or "collection" in msg.lower():
+        return "检索服务暂时不可用"
+    return "服务暂时不可用，请稍后重试"
 
 
 def _on_upload(file):
@@ -63,7 +108,38 @@ def _on_upload(file):
 
 
 def _on_send(query, history):
-    """提问回调。"""
+    """提问回调（流式版 + 阶段 4 降级/容错）。
+
+    【流式约定（契约 3.4 / S2 / T5）】
+      从 return 改为 yield：每收到一个 token 事件，yield 更新后的全量 history。
+      Gradio 5.49.1 的 Chatbot 流式不支持「追加」，必须每次 yield 全量快照。
+      引用区（citations_md）只在收到 citations 事件时更新，token 阶段用 gr.update()。
+
+    【占位提示（阶段 3 / S4）】
+      重排耗时约 9 秒，首字延迟全卡在这。点发送后立即 yield 一条「正在检索并重排…」。
+
+    【pending_prefix（阶段 4 / G6 实现约束）】
+      收到 degraded 时不立刻 append 空消息（会闪一次空条目），而是记 pending_prefix；
+      第一个 token 到达时拼到 content 开头。若零 token 就异常，则流结束时拼前缀 + 提示。
+
+    【异常处理（阶段 4 / 4.5）】
+      永远 append 到现有 content，不重置——覆盖 D1+D2、D1+D3 叠加场景：
+        - D1+D2：content 已有 degraded 前缀 → 追加"（生成服务繁忙…）"
+        - D1+D3：content 已有前缀 + 半截答案 → 追加"（生成中断：原因）"
+        - 纯 D2：content 还是占位 → 替换为"（生成服务繁忙…）"
+
+    【未知事件类型（阶段 4 / G7）】
+      print 到 stderr，不崩，向前兼容后续阶段新增的事件类型。
+      保留 print 而非 logger：这是开发期告警，不属业务日志（契约 5e）。
+
+    【阶段 5 / L2】
+      异常时记一条 logger.error（结构化：error_type / error_msg / user_msg）。
+      业务日志（query done）在 qa.py 里打，本函数不重复打。
+
+    【性能隐患】
+      每个 token 都 yield 全量 history，100 个 token ≈ 100 次序列化。
+      Gradio 内部会 diff，实际开销可接受；若未来 token 很碎，可考虑按时间/字数节流。
+    """
     if history is None:
         history = []
 
@@ -71,23 +147,75 @@ def _on_send(query, history):
         new_history = history + [
             {"role": "assistant", "content": "请输入问题后再发送。"}
         ]
-        return new_history, new_history, "", EMPTY_CITATIONS
+        yield new_history, new_history, "", EMPTY_CITATIONS
+        return
 
     new_history = history + [{"role": "user", "content": query}]
+    # 【核心逻辑】assistant 消息用同一个 dict 引用，每次 += 后 yield 全量快照。
+    assistant_msg = {"role": "assistant", "content": ""}
+    new_history = new_history + [assistant_msg]
+
+    # 【阶段 3 / S4】占位提示：立即 yield，解决重排 9 秒的白屏焦虑。
+    assistant_msg["content"] = PLACEHOLDER
+    yield new_history, new_history, "", gr.update()
+
+    pending_prefix = ""     # 阶段 4：degraded 前缀，等首 token 到达时拼接
+    first_token = True      # 是否还没收到真 token（区分占位）
+    citations_md = EMPTY_CITATIONS
 
     try:
-        result = answer(query)
-        new_history = new_history + [
-            {"role": "assistant", "content": result.answer}
-        ]
-        citations_md = _format_citations(result.citations)
+        for event in answer_stream(query):
+            etype = event["type"]
+            if etype == "degraded":
+                # D1：记前缀，不即时渲染（G6：避免空消息闪烁）。
+                pending_prefix = DEGRADED_PREFIX
+            elif etype == "token":
+                if first_token:
+                    # 首 token：用 pending_prefix + token 覆盖占位。
+                    assistant_msg["content"] = pending_prefix + event["content"]
+                    pending_prefix = ""
+                    first_token = False
+                else:
+                    assistant_msg["content"] += event["content"]
+                yield new_history, new_history, "", gr.update()
+            elif etype == "citations":
+                if first_token:
+                    # 边界：零 token 但有 citations（LLM 返回空），用前缀收尾。
+                    assistant_msg["content"] = pending_prefix + "（模型未返回内容）"
+                    pending_prefix = ""
+                    first_token = False
+                citations_md = _format_citations(event["citations"])
+                yield new_history, new_history, "", citations_md
+            elif etype == "refused":
+                # 拒答：覆盖占位（清空前缀，因为拒答不需要降级前缀）。
+                assistant_msg["content"] = REFUSAL_TEXT
+                pending_prefix = ""
+                first_token = False
+                yield new_history, new_history, "", EMPTY_CITATIONS
+                return
+            else:
+                # G7：未知事件类型忽略并告警，不崩（向前兼容）。
+                # 契约 5e：保留 print(stderr)，不改 loguru（非业务日志）。
+                print(f"[警告] 未知事件类型: {etype}", file=sys.stderr)
     except Exception as e:
-        new_history = new_history + [
-            {"role": "assistant", "content": f"出错了：{e}"}
-        ]
-        citations_md = EMPTY_CITATIONS
-
-    return new_history, new_history, "", citations_md
+        # 阶段 4 / 4.5：异常 → 友好文案，永远 append 不重置。
+        reason = _error_to_message(e)
+        # 阶段 5 / L2：异常日志（结构化），带出 error_type / error_msg / user_msg。
+        logger.bind(
+            event="error",
+            error_type=type(e).__name__,
+            error_msg=str(e)[:200],
+            user_msg=reason,
+        ).error("query error")
+        if first_token:
+            # D2 或 D1+D2：一个真 token 都没出，替换占位（保留 degraded 前缀）。
+            assistant_msg["content"] = pending_prefix + f"（{reason}）"
+            citations_md = EMPTY_CITATIONS
+        else:
+            # D3 或 D1+D3：有半截答案，append 中断提示（G5：引用区标注中断）。
+            assistant_msg["content"] += f"\n\n（{reason}）"
+            citations_md = INTERRUPTED_CITATIONS
+        yield new_history, new_history, "", citations_md
 
 
 def build_app() -> gr.Blocks:
@@ -125,6 +253,7 @@ def build_app() -> gr.Blocks:
             outputs=[status_md, chatbot, history_state, citations_md],
         )
 
+        # 【阶段 3】_on_send 现在是生成器（yield），Gradio 会自动按流式渲染。
         send_btn.click(
             fn=_on_send,
             inputs=[query_box, history_state],

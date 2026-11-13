@@ -1,0 +1,515 @@
+{
+  "D1": {
+    "total_bm25_only_chunks": 624,
+    "same_route_questions": 50,
+    "fusion_effective_questions": 50,
+    "fusion_swallowed_questions": 0,
+    "verdict": "融合生效：B 组包含了 BM25 独有候选。",
+    "swallowed_details": []
+  },
+  "D2": [
+    {
+      "id": "en_019",
+      "query": "What is ΔW in LoRA?",
+      "gold_page": 4,
+      "vector_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p6-7#c23",
+          "pages": "p6-7",
+          "is_gold": false,
+          "snippet": "×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto.\nLoRA model LoRA\n6\nModel&Met"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p23-23#c75",
+          "pages": "p23-23",
+          "is_gold": false,
+          "snippet": "l =0 76.1M 64.9 87.9\np i\nr =1 7.1M 71.9 89.8\nr =4 21.2M 73.2 91.0\nAdapterH r =8 "
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p23-23#c76",
+          "pages": "p23-23",
+          "is_gold": false,
+          "snippet": "4 151.1M 75.9 91.1\nq v p i\nr =r =64,l =8,l =4 302.1M 76.2 91.3\nq v p i\nLoRA+PL r"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p20-21#c68",
+          "pages": "p20-21",
+          "is_gold": false,
+          "snippet": "ing\nq k v o\nhyperparametersusedinourGPT-3experimentsarelistedinTable12.\nE COMBIN"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p12-12#c41",
+          "pages": "p12-12",
+          "is_gold": false,
+          "snippet": "how “large” is ∆W comparing to its corresponding directions in W? This can shed "
+        }
+      ],
+      "bm25_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p11-12#c40",
+          "pages": "p11-12",
+          "is_gold": false,
+          "snippet": "we also plot two random Gaussian matrices, which do not share any common\nsingula"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p10-10#c35",
+          "pages": "p10-10",
+          "is_gold": false,
+          "snippet": "8 4 4 2\nWikiSQL(±0.5%) 70.4 70.0 73.0 73.2 71.4 73.7 73.7\nMultiNLI(±0.1%) 91.0 9"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p12-12#c42",
+          "pages": "p12-12",
+          "is_gold": false,
+          "snippet": "righttopr singularvector\nq\ndirectionsofeither(1)∆W ,(2)W ,or(3)arandommatrix. Th"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p9-10#c33",
+          "pages": "p9-10",
+          "is_gold": false,
+          "snippet": "other classical learning methods, including the\ncorresponding(finite-width)neura"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p12-12#c41",
+          "pages": "p12-12",
+          "is_gold": false,
+          "snippet": "how “large” is ∆W comparing to its corresponding directions in W? This can shed "
+        }
+      ],
+      "hybrid_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p12-12#c41",
+          "pages": "p12-12",
+          "is_gold": false,
+          "snippet": "how “large” is ∆W comparing to its corresponding directions in W? This can shed "
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p11-12#c40",
+          "pages": "p11-12",
+          "is_gold": false,
+          "snippet": "we also plot two random Gaussian matrices, which do not share any common\nsingula"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p6-7#c23",
+          "pages": "p6-7",
+          "is_gold": false,
+          "snippet": "×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto.\nLoRA model LoRA\n6\nModel&Met"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p23-23#c75",
+          "pages": "p23-23",
+          "is_gold": false,
+          "snippet": "l =0 76.1M 64.9 87.9\np i\nr =1 7.1M 71.9 89.8\nr =4 21.2M 73.2 91.0\nAdapterH r =8 "
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p10-10#c35",
+          "pages": "p10-10",
+          "is_gold": false,
+          "snippet": "8 4 4 2\nWikiSQL(±0.5%) 70.4 70.0 73.0 73.2 71.4 73.7 73.7\nMultiNLI(±0.1%) 91.0 9"
+        }
+      ]
+    },
+    {
+      "id": "en_045",
+      "query": "What is the LoRA α value used for GPT-2?",
+      "gold_page": 20,
+      "vector_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p6-7#c23",
+          "pages": "p6-7",
+          "is_gold": false,
+          "snippet": "×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto.\nLoRA model LoRA\n6\nModel&Met"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p8-8#c27",
+          "pages": "p8-8",
+          "is_gold": false,
+          "snippet": "8 89.5 52.0/28.0/44.5\nGPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5\nGPT-3(PreEmbe"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p21-22#c70",
+          "pages": "p21-22",
+          "is_gold": false,
+          "snippet": "et al., 2017)\nfollowing the setup of Li & Liang (2021). The result is shown in T"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p22-22#c72",
+          "pages": "p22-22",
+          "is_gold": false,
+          "snippet": "Prefix(0.77M) 47.7 63.4 56.3 .39 .45 .42 .48 .34 .40\nLoRA(0.77M) 48.4 64.0 57.0 "
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p21-22#c71",
+          "pages": "p21-22",
+          "is_gold": false,
+          "snippet": ".\n21\nMethod WebNLG\nBLEU↑ MET↑ TER↓\nU S A U S A U S A\nGPT-2Medium\nFine-Tune(354M)"
+        }
+      ],
+      "bm25_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p18-18#c62",
+          "pages": "p18-18",
+          "is_gold": false,
+          "snippet": "the 14 total categories are not seen during training, but are represented in\nthe"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p20-21#c68",
+          "pages": "p20-21",
+          "is_gold": true,
+          "snippet": "ing\nq k v o\nhyperparametersusedinourGPT-3experimentsarelistedinTable12.\nE COMBIN"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p18-19#c63",
+          "pages": "p18-19",
+          "is_gold": false,
+          "snippet": "the hyperparameters used in our runs\ninTable9.\nD.2 DEBERTA\nWeagaintrainusingAdam"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p2-2#c4",
+          "pages": "p2-2",
+          "is_gold": false,
+          "snippet": "itchtasksbyreplacingthe\nmatricesAandB inFigure1, reducingthestoragerequirementan"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p18-18#c61",
+          "pages": "p18-18",
+          "is_gold": false,
+          "snippet": "Creative\nCommonsBY-NC-ND4.0.\nE2ENLGChallengewasfirstintroducedin Novikovaetal.(2"
+        }
+      ],
+      "hybrid_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p6-7#c23",
+          "pages": "p6-7",
+          "is_gold": false,
+          "snippet": "×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto.\nLoRA model LoRA\n6\nModel&Met"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p18-18#c62",
+          "pages": "p18-18",
+          "is_gold": false,
+          "snippet": "the 14 total categories are not seen during training, but are represented in\nthe"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p8-8#c27",
+          "pages": "p8-8",
+          "is_gold": false,
+          "snippet": "8 89.5 52.0/28.0/44.5\nGPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5\nGPT-3(PreEmbe"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p20-21#c68",
+          "pages": "p20-21",
+          "is_gold": true,
+          "snippet": "ing\nq k v o\nhyperparametersusedinourGPT-3experimentsarelistedinTable12.\nE COMBIN"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p21-22#c70",
+          "pages": "p21-22",
+          "is_gold": false,
+          "snippet": "et al., 2017)\nfollowing the setup of Li & Liang (2021). The result is shown in T"
+        }
+      ]
+    },
+    {
+      "id": "en_005",
+      "query": "What rank r is typically sufficient for LoRA on GPT-3?",
+      "gold_page": 2,
+      "vector_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p8-8#c27",
+          "pages": "p8-8",
+          "is_gold": false,
+          "snippet": "8 89.5 52.0/28.0/44.5\nGPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5\nGPT-3(PreEmbe"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p6-7#c23",
+          "pages": "p6-7",
+          "is_gold": false,
+          "snippet": "×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto.\nLoRA model LoRA\n6\nModel&Met"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p1-1#c0",
+          "pages": "p1-1",
+          "is_gold": false,
+          "snippet": "LORA: LOW-RANK ADAPTATION OF LARGE LAN-\nGUAGE MODELS\nEdwardHu∗ YelongShen∗ Phill"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p21-22#c70",
+          "pages": "p21-22",
+          "is_gold": false,
+          "snippet": "et al., 2017)\nfollowing the setup of Li & Liang (2021). The result is shown in T"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p5-5#c15",
+          "pages": "p5-5",
+          "is_gold": false,
+          "snippet": "thecheckpoint\nsizeisreducedbyroughly10,000×(from350GBto35MB)4.Thisallowsustotrai"
+        }
+      ],
+      "bm25_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p3-4#c9",
+          "pages": "p3-4",
+          "is_gold": false,
+          "snippet": "processedsequentially.Thismakes\na difference in the online inference setting whe"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p9-10#c33",
+          "pages": "p9-10",
+          "is_gold": false,
+          "snippet": "other classical learning methods, including the\ncorresponding(finite-width)neura"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p10-10#c35",
+          "pages": "p10-10",
+          "is_gold": false,
+          "snippet": "8 4 4 2\nWikiSQL(±0.5%) 70.4 70.0 73.0 73.2 71.4 73.7 73.7\nMultiNLI(±0.1%) 91.0 9"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p7-8#c26",
+          "pages": "p7-8",
+          "is_gold": false,
+          "snippet": ") is a more recent variant of BERT that is trained on a much larger\nscale and pe"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p10-10#c34",
+          "pages": "p10-10",
+          "is_gold": false,
+          "snippet": "performance? 2) Is the “optimal” adaptation matrix ∆W really rank-\ndeficient? If"
+        }
+      ],
+      "hybrid_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p8-8#c27",
+          "pages": "p8-8",
+          "is_gold": false,
+          "snippet": "8 89.5 52.0/28.0/44.5\nGPT-3(BitFit) 14.2M 71.3 91.0 51.3/27.4/43.5\nGPT-3(PreEmbe"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p3-4#c9",
+          "pages": "p3-4",
+          "is_gold": false,
+          "snippet": "processedsequentially.Thismakes\na difference in the online inference setting whe"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p6-7#c23",
+          "pages": "p6-7",
+          "is_gold": false,
+          "snippet": "×r,whereLˆ isthenumberofweightmatricesweapplyLoRAto.\nLoRA model LoRA\n6\nModel&Met"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p9-10#c33",
+          "pages": "p9-10",
+          "is_gold": false,
+          "snippet": "other classical learning methods, including the\ncorresponding(finite-width)neura"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p10-10#c35",
+          "pages": "p10-10",
+          "is_gold": false,
+          "snippet": "8 4 4 2\nWikiSQL(±0.5%) 70.4 70.0 73.0 73.2 71.4 73.7 73.7\nMultiNLI(±0.1%) 91.0 9"
+        }
+      ]
+    },
+    {
+      "id": "en_034",
+      "query": "What is the sequence length used for MNLI experiments?",
+      "gold_page": 19,
+      "vector_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p3-4#c10",
+          "pages": "p3-4",
+          "is_gold": false,
+          "snippet": ".Wedeferthestudy\nontaskperformancetoSection5.\n3\nBatchSize 32 16 1\nSequenceLength"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p18-18#c62",
+          "pages": "p18-18",
+          "is_gold": false,
+          "snippet": "the 14 total categories are not seen during training, but are represented in\nthe"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p3-3#c7",
+          "pages": "p3-3",
+          "is_gold": false,
+          "snippet": "set of parameters Θ with\n|Θ|(cid:28)|Φ |. Thetaskoffinding∆Φthusbecomesoptimizin"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p5-6#c17",
+          "pages": "p5-6",
+          "is_gold": false,
+          "snippet": "dates.Asimple\nvariantistoupdateonlysomelayerswhilefreezingothers. Weincludeonesu"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p23-23#c76",
+          "pages": "p23-23",
+          "is_gold": false,
+          "snippet": "4 151.1M 75.9 91.1\nq v p i\nr =r =64,l =8,l =4 302.1M 76.2 91.3\nq v p i\nLoRA+PL r"
+        }
+      ],
+      "bm25_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p18-18#c62",
+          "pages": "p18-18",
+          "is_gold": false,
+          "snippet": "the 14 total categories are not seen during training, but are represented in\nthe"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p17-18#c59",
+          "pages": "p17-18",
+          "is_gold": false,
+          "snippet": "Section 5.1\nformoredetailsonthedesigns. Weplottheslow-downinpercentagecomparedto"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p3-4#c9",
+          "pages": "p3-4",
+          "is_gold": false,
+          "snippet": "processedsequentially.Thismakes\na difference in the online inference setting whe"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p17-17#c58",
+          "pages": "p17-17",
+          "is_gold": false,
+          "snippet": "rningonGPT-3(Brownetal.,2020).\nB INFERENCE LATENCY INTRODUCED BY ADAPTER LAYERS\n"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p1-2#c2",
+          "pages": "p1-2",
+          "is_gold": false,
+          "snippet": "dford et al., b) or RoBERTa large (Liu et al., 2019) to a 𝐴=𝒩(0,𝜎2)\ncritical dep"
+        }
+      ],
+      "hybrid_top5": [
+        {
+          "rank": 1,
+          "chunk_id": "sample.pdf#p18-18#c62",
+          "pages": "p18-18",
+          "is_gold": false,
+          "snippet": "the 14 total categories are not seen during training, but are represented in\nthe"
+        },
+        {
+          "rank": 2,
+          "chunk_id": "sample.pdf#p3-4#c10",
+          "pages": "p3-4",
+          "is_gold": false,
+          "snippet": ".Wedeferthestudy\nontaskperformancetoSection5.\n3\nBatchSize 32 16 1\nSequenceLength"
+        },
+        {
+          "rank": 3,
+          "chunk_id": "sample.pdf#p17-18#c59",
+          "pages": "p17-18",
+          "is_gold": false,
+          "snippet": "Section 5.1\nformoredetailsonthedesigns. Weplottheslow-downinpercentagecomparedto"
+        },
+        {
+          "rank": 4,
+          "chunk_id": "sample.pdf#p3-3#c7",
+          "pages": "p3-3",
+          "is_gold": false,
+          "snippet": "set of parameters Θ with\n|Θ|(cid:28)|Φ |. Thetaskoffinding∆Φthusbecomesoptimizin"
+        },
+        {
+          "rank": 5,
+          "chunk_id": "sample.pdf#p3-4#c9",
+          "pages": "p3-4",
+          "is_gold": false,
+          "snippet": "processedsequentially.Thismakes\na difference in the online inference setting whe"
+        }
+      ]
+    }
+  ],
+  "D3": {
+    "corpus_size": 84,
+    "n_questions": 100,
+    "bm25_r5": 0.25,
+    "bm25_r20": 0.46,
+    "random_r5_baseline": 0.0595,
+    "random_r20_baseline": 0.2381,
+    "bm25_r20_vs_random": 1.93,
+    "avg_overlap_20": 7.52,
+    "random_overlap_20": 4.76,
+    "overlap_rate": 0.376
+  },
+  "D4": {
+    "n": 100,
+    "proper_noun": 38,
+    "numeric": 42,
+    "proper_or_numeric": 66,
+    "generic": 34,
+    "proper_rate": 0.38,
+    "numeric_rate": 0.42,
+    "generic_rate": 0.34
+  },
+  "D5": {
+    "table": {
+      "a_both_hit": 55,
+      "b_A_hit_B_miss": 2,
+      "c_A_miss_B_hit": 2,
+      "d_both_miss": 41
+    },
+    "mcnemar_n": 4,
+    "mcnemar_p": null,
+    "note": "不一致对仅 4 个（b=2, c=2），样本量不足以做检验",
+    "r5_diff_mean": -0.01,
+    "r5_diff_ci95": [
+      -0.08,
+      0.06
+    ],
+    "ci_contains_zero": true
+  }
+}

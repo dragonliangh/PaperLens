@@ -1,0 +1,1488 @@
+{
+  "timestamp": "2026-11-10T20:23:13.303811",
+  "params": {
+    "coarse_top_k": 20,
+    "final_k": 4,
+    "recall_at": 4,
+    "filtered": "answerable_only"
+  },
+  "en": {
+    "answerable_count": 50,
+    "with_rerank": {
+      "recall_at_4": 0.64,
+      "mrr_at_4": 0.4283
+    },
+    "without_rerank": {
+      "recall_at_4": 0.54,
+      "mrr_at_4": 0.345
+    },
+    "coarse_baseline": {
+      "recall_at_5": 0.6,
+      "mrr_at_20": 0.3859
+    }
+  },
+  "zh": {
+    "answerable_count": 50,
+    "with_rerank": {
+      "recall_at_4": 0.5,
+      "mrr_at_4": 0.3983
+    },
+    "without_rerank": {
+      "recall_at_4": 0.22,
+      "mrr_at_4": 0.1233
+    },
+    "coarse_baseline": {
+      "recall_at_5": 0.24,
+      "mrr_at_20": 0.1796
+    }
+  },
+  "per_question": [
+    {
+      "id": "en_001",
+      "lang": "en",
+      "gold_page": 1,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 5
+    },
+    {
+      "id": "en_002",
+      "lang": "en",
+      "gold_page": 1,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "en_003",
+      "lang": "en",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 13
+    },
+    {
+      "id": "en_004",
+      "lang": "en",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 8
+    },
+    {
+      "id": "en_005",
+      "lang": "en",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 11
+    },
+    {
+      "id": "en_006",
+      "lang": "en",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 8
+    },
+    {
+      "id": "en_007",
+      "lang": "en",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": 4,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "en_008",
+      "lang": "en",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "en_009",
+      "lang": "en",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_010",
+      "lang": "en",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_011",
+      "lang": "en",
+      "gold_page": 10,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_012",
+      "lang": "en",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "en_013",
+      "lang": "en",
+      "gold_page": 6,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 14
+    },
+    {
+      "id": "en_014",
+      "lang": "en",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 12
+    },
+    {
+      "id": "en_015",
+      "lang": "en",
+      "gold_page": 7,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 5
+    },
+    {
+      "id": "en_016",
+      "lang": "en",
+      "gold_page": 8,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "en_017",
+      "lang": "en",
+      "gold_page": 8,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 12
+    },
+    {
+      "id": "en_018",
+      "lang": "en",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_019",
+      "lang": "en",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "en_020",
+      "lang": "en",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "en_021",
+      "lang": "en",
+      "gold_page": 10,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_022",
+      "lang": "en",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 13
+    },
+    {
+      "id": "en_023",
+      "lang": "en",
+      "gold_page": 10,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_024",
+      "lang": "en",
+      "gold_page": 10,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_025",
+      "lang": "en",
+      "gold_page": 11,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "en_026",
+      "lang": "en",
+      "gold_page": 8,
+      "with_rerank": {
+        "rank": 4,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "en_027",
+      "lang": "en",
+      "gold_page": 12,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_028",
+      "lang": "en",
+      "gold_page": 11,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "en_029",
+      "lang": "en",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "en_030",
+      "lang": "en",
+      "gold_page": 20,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_031",
+      "lang": "en",
+      "gold_page": 19,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "en_032",
+      "lang": "en",
+      "gold_page": 3,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "en_033",
+      "lang": "en",
+      "gold_page": 19,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 5
+    },
+    {
+      "id": "en_034",
+      "lang": "en",
+      "gold_page": 19,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 6
+    },
+    {
+      "id": "en_035",
+      "lang": "en",
+      "gold_page": 19,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_036",
+      "lang": "en",
+      "gold_page": 3,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "en_037",
+      "lang": "en",
+      "gold_page": 3,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "en_038",
+      "lang": "en",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 10
+    },
+    {
+      "id": "en_039",
+      "lang": "en",
+      "gold_page": 12,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "en_040",
+      "lang": "en",
+      "gold_page": 9,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 10
+    },
+    {
+      "id": "en_041",
+      "lang": "en",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "en_042",
+      "lang": "en",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": 4,
+        "hit": true
+      },
+      "coarse_rank": 4
+    },
+    {
+      "id": "en_043",
+      "lang": "en",
+      "gold_page": 18,
+      "with_rerank": {
+        "rank": 4,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "en_044",
+      "lang": "en",
+      "gold_page": 18,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "en_045",
+      "lang": "en",
+      "gold_page": 20,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 13
+    },
+    {
+      "id": "en_046",
+      "lang": "en",
+      "gold_page": 20,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 4,
+        "hit": true
+      },
+      "coarse_rank": 4
+    },
+    {
+      "id": "en_047",
+      "lang": "en",
+      "gold_page": 8,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "en_048",
+      "lang": "en",
+      "gold_page": 1,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 10
+    },
+    {
+      "id": "en_049",
+      "lang": "en",
+      "gold_page": 26,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 4,
+        "hit": true
+      },
+      "coarse_rank": 4
+    },
+    {
+      "id": "en_050",
+      "lang": "en",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 6
+    },
+    {
+      "id": "zh_001",
+      "lang": "zh",
+      "gold_page": 1,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 8
+    },
+    {
+      "id": "zh_002",
+      "lang": "zh",
+      "gold_page": 1,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 6
+    },
+    {
+      "id": "zh_003",
+      "lang": "zh",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_004",
+      "lang": "zh",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_005",
+      "lang": "zh",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_006",
+      "lang": "zh",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 16
+    },
+    {
+      "id": "zh_007",
+      "lang": "zh",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 7
+    },
+    {
+      "id": "zh_008",
+      "lang": "zh",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 9
+    },
+    {
+      "id": "zh_009",
+      "lang": "zh",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 8
+    },
+    {
+      "id": "zh_010",
+      "lang": "zh",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 8
+    },
+    {
+      "id": "zh_011",
+      "lang": "zh",
+      "gold_page": 10,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "zh_012",
+      "lang": "zh",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_013",
+      "lang": "zh",
+      "gold_page": 6,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "zh_014",
+      "lang": "zh",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_015",
+      "lang": "zh",
+      "gold_page": 7,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "zh_016",
+      "lang": "zh",
+      "gold_page": 8,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "zh_017",
+      "lang": "zh",
+      "gold_page": 8,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 14
+    },
+    {
+      "id": "zh_018",
+      "lang": "zh",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 13
+    },
+    {
+      "id": "zh_019",
+      "lang": "zh",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_020",
+      "lang": "zh",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_021",
+      "lang": "zh",
+      "gold_page": 10,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 16
+    },
+    {
+      "id": "zh_022",
+      "lang": "zh",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_023",
+      "lang": "zh",
+      "gold_page": 10,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "zh_024",
+      "lang": "zh",
+      "gold_page": 10,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "coarse_rank": 2
+    },
+    {
+      "id": "zh_025",
+      "lang": "zh",
+      "gold_page": 11,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "zh_026",
+      "lang": "zh",
+      "gold_page": 8,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 7
+    },
+    {
+      "id": "zh_027",
+      "lang": "zh",
+      "gold_page": 12,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "coarse_rank": 1
+    },
+    {
+      "id": "zh_028",
+      "lang": "zh",
+      "gold_page": 11,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_029",
+      "lang": "zh",
+      "gold_page": 5,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 18
+    },
+    {
+      "id": "zh_030",
+      "lang": "zh",
+      "gold_page": 20,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "zh_031",
+      "lang": "zh",
+      "gold_page": 19,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "zh_032",
+      "lang": "zh",
+      "gold_page": 3,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_033",
+      "lang": "zh",
+      "gold_page": 19,
+      "with_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 14
+    },
+    {
+      "id": "zh_034",
+      "lang": "zh",
+      "gold_page": 19,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 9
+    },
+    {
+      "id": "zh_035",
+      "lang": "zh",
+      "gold_page": 19,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 8
+    },
+    {
+      "id": "zh_036",
+      "lang": "zh",
+      "gold_page": 3,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 7
+    },
+    {
+      "id": "zh_037",
+      "lang": "zh",
+      "gold_page": 3,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 6
+    },
+    {
+      "id": "zh_038",
+      "lang": "zh",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 12
+    },
+    {
+      "id": "zh_039",
+      "lang": "zh",
+      "gold_page": 12,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_040",
+      "lang": "zh",
+      "gold_page": 9,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_041",
+      "lang": "zh",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 5
+    },
+    {
+      "id": "zh_042",
+      "lang": "zh",
+      "gold_page": 2,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 14
+    },
+    {
+      "id": "zh_043",
+      "lang": "zh",
+      "gold_page": 18,
+      "with_rerank": {
+        "rank": 4,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 9
+    },
+    {
+      "id": "zh_044",
+      "lang": "zh",
+      "gold_page": 18,
+      "with_rerank": {
+        "rank": 2,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 16
+    },
+    {
+      "id": "zh_045",
+      "lang": "zh",
+      "gold_page": 20,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 11
+    },
+    {
+      "id": "zh_046",
+      "lang": "zh",
+      "gold_page": 20,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": 3,
+        "hit": true
+      },
+      "coarse_rank": 3
+    },
+    {
+      "id": "zh_047",
+      "lang": "zh",
+      "gold_page": 8,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 12
+    },
+    {
+      "id": "zh_048",
+      "lang": "zh",
+      "gold_page": 1,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": null
+    },
+    {
+      "id": "zh_049",
+      "lang": "zh",
+      "gold_page": 26,
+      "with_rerank": {
+        "rank": 1,
+        "hit": true
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 8
+    },
+    {
+      "id": "zh_050",
+      "lang": "zh",
+      "gold_page": 4,
+      "with_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "without_rerank": {
+        "rank": null,
+        "hit": false
+      },
+      "coarse_rank": 10
+    }
+  ],
+  "diff": {
+    "en": {
+      "a_hit_b_miss": [
+        "en_001",
+        "en_004",
+        "en_005",
+        "en_015",
+        "en_017",
+        "en_022",
+        "en_033",
+        "en_034",
+        "en_050"
+      ],
+      "b_hit_a_miss": [
+        "en_016",
+        "en_029",
+        "en_042",
+        "en_044"
+      ]
+    },
+    "zh": {
+      "a_hit_b_miss": [
+        "zh_001",
+        "zh_002",
+        "zh_008",
+        "zh_009",
+        "zh_010",
+        "zh_017",
+        "zh_018",
+        "zh_029",
+        "zh_033",
+        "zh_034",
+        "zh_035",
+        "zh_036",
+        "zh_041",
+        "zh_042",
+        "zh_043",
+        "zh_044",
+        "zh_049"
+      ],
+      "b_hit_a_miss": [
+        "zh_013",
+        "zh_015",
+        "zh_023"
+      ]
+    }
+  }
+}

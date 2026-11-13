@@ -13,7 +13,7 @@ license: Apache License 2.0
 
 上传学术论文 PDF，基于原文回答技术问题，并给出**页码级引用**；检索不到证据时**明确拒答**，而不是强行生成。
 
-> 当前进度：**第 1–7 块已完成并通过验收**（解析分块 → 向量索引 → 检索生成引用 → Gradio 界面 → Docker 部署 → 两阶段检索 → 评估与拒答 → 对照组评估）。
+> 当前进度：**第 1–7 块 + 阶段 1–4 已完成并通过验收**（解析分块 → 向量索引 → 检索生成引用 → Gradio 界面 → Docker 部署 → 两阶段检索 → 评估与拒答 → 对照组评估 → 消融 → 混合检索负结果 → 流式 → 降级容错）。
 
 ---
 
@@ -31,18 +31,24 @@ PaperLens/
 ├── test_ingest.py              # 第 1 块验收测试
 ├── index_store.py              # 第 2 块：嵌入 + 向量库索引
 ├── test_index_store.py         # 第 2 块验收测试
-├── qa.py                       # 第 3/6/7 块：检索 + 重排 + 生成 + 引用 + 拒答
-├── test_qa.py                  # 第 3 块验收测试
+├── qa.py                       # 第 3/6/7 块：检索 + 重排 + 生成 + 引用 + 拒答 + 流式 + 降级
+├── test_qa.py                  # 第 3 块 + 阶段 3/4 验收测试（15 passed）
 ├── rerank.py                   # 第 6 块：Cross-Encoder 精排
-├── app.py                      # 第 4 块：Gradio 界面
+├── app.py                      # 第 4 块：Gradio 界面（流式 + 降级）
 ├── evaluate.py                 # 第 7 块：主评估脚本（140 题）
 ├── evaluate_ctrl.py            # 第 7 块补充：对照组评估（20 题 × 2 语言）
+├── evaluate_ablation.py        # 阶段 1：消融实验（有/无重排）
+├── evaluate_hybrid.py          # 阶段 2b：混合检索 A/B 评估
 ├── test_eval.py                # 第 7 块验收测试
+├── test_hybrid.py              # 阶段 2：混合检索验收测试（11 passed）
+├── hybrid_search.py            # 阶段 2：混合检索（BM25+向量+RRF，已回滚接入，保留作储备）
 ├── eval_set.json               # 第 7 块：140 条主评估集
 ├── ctrl_eval_set.json          # 第 7 块补充：40 条对照组评估集
 ├── thresholds.json             # 第 7 块：按语言的拒答阈值
 ├── eval_report.json            # 第 7 块：主评估输出（自动生成）
 ├── ctrl_eval_report.json       # 第 7 块补充：对照组评估输出（自动生成）
+├── ablation_report.json        # 阶段 1：消融报告（自动生成）
+├── hybrid_eval_report.json     # 阶段 2b：混合检索评估输出（自动生成）
 ├── test_final.py               # 本地模型修复脚本（从 .bin 重生成 .safetensors）
 ├── Dockerfile                  # 第 5 块：Docker 构建文件
 ├── docker.yaml                 # 魔搭创空间配置
@@ -52,6 +58,41 @@ PaperLens/
 └── DESIGN.md                   # 契约、设计决策、变更记录
 ```
 
+---
+
+## 架构图
+
+系统的数据流与分层结构如下（按请求执行顺序自上而下排列）：
+
+```text
+┌────────────────────────────────────────────────────────┐
+│ 1. 用户边界                                             │
+│   上传 PDF → 提问 → 看答案 + 引用                         │
+└───────────────────────┬────────────────────────────────┘
+                        ↓
+┌────────────────────────────────────────────────────────┐
+│ 2. 界面层 (app.py)                                      │
+│   [Gradio UI] → [_on_send 流式] → [_error_to_message]   │
+│                       ↑                                │
+│                [pending_prefix 降级前缀]                │
+└───────────────────────┬────────────────────────────────┘
+                        ↓
+┌────────────────────────────────────────────────────────┐
+│ 3. 业务层 (qa.py)                                       │
+│   [answer_stream 流式] → [search 粗排 top-20]            │
+│           ↓                   ↓                        │
+│   [rerank 精排 top-4] ← [拒答阈值 en=0.3 / zh=0.18]      │
+│           ↓                                            │
+│   [拼 prompt] → [调 GLM 生成] → [解析引用]               │
+└───────────────────────┬────────────────────────────────┘
+                        ↓
+┌────────────────────────────────────────────────────────┐
+│ 4. 存储 / 模型层                                         │
+│   [Chroma 向量库]  [BGE-small 嵌入]                     │
+│   [BGE-reranker 重排] [GLM-4.7-Flash 生成]              │
+│   [logs/app.log 结构化日志]                             │
+└────────────────────────────────────────────────────────┘
+```
 ---
 
 ## 环境要求
@@ -68,6 +109,7 @@ PaperLens/
 - 第 5 块：`pdfplumber==0.11.8`、`Pillow==11.3.0`、`gradio==5.49.1`（解决 Pillow 冲突）
 - 第 6 块：复用 `sentence-transformers`，新增模型文件 `models/bge-reranker-base/`
 - 第 7 块：无新增依赖（纯标准库）
+- 阶段 2：`rank_bm25`（混合检索；已回滚接入，但 `hybrid_search.py` 保留）
 
 ### 首次配置
 
@@ -87,7 +129,7 @@ PaperLens/
 3. 安装依赖：
 
    ```powershell
-   pip install pdfplumber transformers torch pytest chromadb sentence-transformers zhipuai sniffio gradio -i https://pypi.tuna.tsinghua.edu.cn/simple
+   pip install pdfplumber transformers torch pytest chromadb sentence-transformers zhipuai sniffio gradio rank_bm25 -i https://pypi.tuna.tsinghua.edu.cn/simple
    ```
 
 4. 设置智谱 API Key（第 3 块需要）：
@@ -121,13 +163,19 @@ snapshot_download('BAAI/bge-reranker-base', local_dir='./models/bge-reranker-bas
 pytest test_ingest.py test_index_store.py test_qa.py -v
 ```
 
-预期：`test_ingest` 5 passed、`test_index_store` 7 passed、`test_qa` 5 passed（需已设置 `$env:ZHIPU_API_KEY`）。
+预期：`test_ingest` 5 passed、`test_index_store` 7 passed、`test_qa` 15 passed（需已设置 `$env:ZHIPU_API_KEY`；阶段 4 的 20a–20g 用 monkeypatch，不需 Key）。
 
 ```powershell
 pytest test_eval.py -v
 ```
 
 预期：10 passed（需先建索引，约 2 分钟）。
+
+```powershell
+pytest test_hybrid.py -v
+```
+
+预期：11 passed（`hybrid_search.py` 保留，测试仍有效）。
 
 ### 本地建索引
 
@@ -157,6 +205,18 @@ python evaluate_ctrl.py
 
 约 1-2 分钟（40 条对照组）。输出表格 + 写入 `ctrl_eval_report.json`。
 
+```powershell
+python evaluate_ablation.py
+```
+
+约 11 分钟（100 题消融）。输出表格 + 写入 `ablation_report.json`。
+
+```powershell
+python evaluate_hybrid.py
+```
+
+约 22 分钟（100 题 × 2 组）。输出表格 + 写入 `hybrid_eval_report.json`。
+
 ---
 
 ## 已知限制
@@ -184,7 +244,8 @@ python evaluate_ctrl.py
 
 - 上传的 PDF 存在 Gradio 的临时目录，进程重启即失效。
 - 索引是全局的：多个用户上传不同论文会共存于同一 Collection，检索时跨论文混合。
-- P0 不做流式输出，期间界面显示处理中。
+- **流式输出已做（阶段 3），但只优化 LLM 阶段**：答案逐字出，首字延迟仍约 9 秒，瓶颈在重排（6.3–15.2 秒，不稳定），不在 LLM。点发送后立即显示"正在检索并重排…"占位缓解白屏；重排耗时优化列为后续独立项。
+- **占位提示不显示用时/阶段**：用户不知道卡在哪一步、还要等多久。分阶段文案和计时记为后续优化项（S8）。
 
 ### 第 5 块：Docker 部署（魔搭）
 
@@ -198,7 +259,55 @@ python evaluate_ctrl.py
 - **两阶段检索**：向量粗排（top-20）→ Cross-Encoder 精排（top-4）。实测重排后，含答案的摘要页 p1 从粗排第 4 名升至第 1 名（分数从 0.76 提升到 0.89）。
 - **重排分数**：Cross-Encoder 输出的分数经 Sigmoid 归一化到 0~1，**与余弦相似度量纲不同**。第 7 块设拒答阈值时必须使用重排分数。
 - **CPU 性能**：`bge-reranker-base` 在 CPU 上必须限制 `batch_size=4`，否则内存交换会让单次重排从 1 秒飙升到 25 秒。
+- **重排耗时不稳定**：实测 6.3–15.2 秒（取决于 CPU 负载），是首字延迟的主要来源。重排优化（换更小 reranker / 减 top_k / 量化）列为后续独立项（S7）。
 - **云端模型加载**：曾遭遇两个问题——(1) Git LFS 传输导致 `.safetensors` 文件头损坏；(2) 强制走 `.bin` 又触发 PyTorch 2.6+ 的 `weights_only=True` 安全限制。**最终方案**：本地用 `test_final.py` 从 `.bin` 重新生成干净的 `.safetensors` 并推送到云端，让云端回归 `safetensors` 加载路径，完全绕开 `torch.load`。
+
+## 日志
+
+### 位置与格式
+
+- **控制台**：人类可读，`HH:mm:ss | LEVEL | message`。
+- **文件**：`logs/app.log`，每行一条 JSON，按天轮转（`rotation="00:00"`），保留 7 天（`retention="7 days"`）。`logs/` 在 `.gitignore` 里，不进仓库。
+
+### 结构化字段（一条/请求）
+
+每次 `answer_stream` 调用结束时打一条 `query done`，字段：
+
+| 字段 | 说明 |
+|---|---|
+| `lang` | `"en"` / `"zh"` |
+| `query_len` | 问题字符数（默认 INFO 只记长度，不记原文） |
+| `retrieval_ms` / `rerank_ms` / `llm_ms` / `total_ms` | 各阶段耗时 |
+| `n_candidates` | 粗排返回条数 |
+| `top_score` | 重排最高分（降级/拒答时为 null） |
+| `refused` / `refuse_reason` | 是否拒答及原因（`"empty"` / `"below_threshold"`） |
+| `degraded` / `degrade_reason` | 是否降级及原因（`"rerank_failed"`） |
+| `prompt_tokens` / `completion_tokens` / `total_tokens` | token 用量（拒答/降级时为 null） |
+
+`app.py` 的异常另打一条 `query error`，字段 `error_type` / `error_msg` / `user_msg`。
+
+### 隐私
+
+默认 INFO 级**不记问题原文**，只记 `query_len`。调试时把日志级别调到 DEBUG 才记原文（`logger.bind(event="query_text", query=query).debug(...)`）。
+
+### token 用量
+
+流式下 usage 在最后一个 chunk 里，需请求时传 `stream_options={"include_usage": True}`。`qa._supports_stream_options()` 在模块加载时探测 zhipuai SDK 是否支持该参数：不支持就直接不带（避免每次请求多打一次被拒请求），支持则带。实测 zhipuai 2.1.5 **支持**，token 统计可用。
+
+### 实测样本
+
+| 问题 | lang | prompt_tokens | completion_tokens | total_tokens |
+|---|---|---|---|---|
+| 英文正常问答 | en | 1692 | 475 | 2167 |
+| 中文正常问答 | zh | 1692 | 583 | 2275 |
+| 不可答（拒答） | en | null | null | null |
+
+prompt_tokens 相同（1692）：prompt 里拼的是英文原文，中英文问题只是末尾 query 不同，检索到的 4 段英文原文一样。completion_tokens 中文多 108：中文回答用字更多。
+
+### 已知限制
+
+- **免费档 GLM 高峰期慢**：日志可查 `llm_ms`，实测有 77 秒的记录（平台侧，非代码问题）。
+- **重排耗时不稳定**：日志可查 `rerank_ms`，实测 6.3–15.2 秒，是首字延迟主要来源（S7 后续优化）。
 
 ---
 
@@ -214,7 +323,11 @@ python evaluate_ctrl.py
 | 6 | 两阶段检索（重排，P1） | ✅ 完成 |
 | 7 | 评估脚本 + 拒答机制（P1） | ✅ 完成 |
 | 7+ | 对照组评估（P1 补充） | ✅ 完成 |
-| 8 | 日志 / CI / 架构图 / 消融（P2） | ⏸ 以后再说 |
+| 8 | 消融实验（有/无重排） | ✅ 完成 |
+| 9 | 混合检索（BM25+向量+RRF） | ⚠️ 实测无增量，已回滚接入（代码保留） |
+| 10 | 流式输出（`answer_stream` + 占位提示） | ✅ 完成 |
+| 11 | 降级与容错（5 个降级点 + 友好文案） | ✅ 完成 |
+| 12 | 日志 / CI / 架构图 / 分阶段文案（P2） | ⏸ 以后再说 |
 
 ---
 
@@ -360,11 +473,86 @@ T4 粗排 Recall@5 = 0.75，精排 Recall@4 = 0.50，粗排找到的 3 道题里
 
 ---
 
+## 阶段 1–2 的探索与负结果
+
+### 阶段 1：重排消融（`evaluate_ablation.py`）
+
+同一 100 道可答题、同一 top-20 候选池，A 组走重排取 top-4，B 组直接取前 4：
+
+| 指标 | A 带重排（EN / ZH） | B 不重排（EN / ZH） | Δ（EN / ZH） |
+|---|---|---|---|
+| 精排 Recall@4 | 0.64 / 0.50 | 0.54 / 0.22 | **+0.10 / +0.28** |
+| 精排 MRR@4 | 0.43 / 0.40 | 0.35 / 0.12 | **+0.08 / +0.28** |
+
+**关键发现**：重排对中文的贡献是英文的 2.8 倍——BGE-small 是英文单语模型，中文粗排本身就弱（B 组 0.22），重排的多语言能力把它救回来。英文有 9 题被救回、4 题被推走（推走的 4 题全是跨页 chunk 机械匹配，与「边界分类」一致）。
+
+### 阶段 2：混合检索（BM25 + 向量 + RRF），实测无增量，已回滚
+
+设计：英文走 BM25 + 向量两路 RRF 融合，中文只走向量（jieba 分词在英文原文里 100% 失效，中文做 BM25 会劣化）。
+
+实测（`hybrid_eval_report.json`）：
+
+| 指标（EN） | A 纯向量 | B 混合 | Δ |
+|---|---|---|---|
+| 粗排 Recall@5 | 0.60 | 0.58 | -0.02 |
+| 精排 Recall@4 | 0.64 | 0.64 | 0 |
+
+诊断（`diag_hybrid_report.json`）四条证据：
+
+1. **融合生效但两路同质**：100 题里 50 题 BM25 top-20 与向量 top-20 完全重合。
+2. **BM25 排序能力弱**：单独 R@20 = 0.46，仅 1.93 倍随机基线（0.238）。
+3. **擅长题型稀缺**：概括型占 34%，数值型受 PDF 提取拖累（`rq=rv=8` 在 84 个 chunk 里 token 数为 0，见 DESIGN.md C34）。
+4. **差异是噪声**：McNemar 不一致对仅 4 个（2 救 2 推），样本不足；R@5 差值 95% CI `[-0.08, 0.06]` 含 0。
+
+**结论**：BM25 的适用前提是「大语料、多文档、关键词精确匹配」，单篇论文（84 chunk）下 IDF 失效、两路同质、擅长题型稀缺。**主动回滚接入**（`qa.py` 改回纯向量），但保留 `hybrid_search.py` 作为多文档场景的现成储备。
+
+**这是一次有数据支撑的负结果，不是「效果不好所以放弃」**：先诊断、量化、再做统计检验，确认是噪声后回滚，并记录根因。
+
+---
+
+## 阶段 3–4：流式与降级
+
+### 阶段 3：流式输出
+
+- **`answer_stream()`**：`qa.py` 新增流式入口，yield `token` / `citations` / `refused` 三种事件；`answer()` 改为消费它，签名与 `RagAnswer` 结构不变。
+- **引用不流式**：引用依赖完整答案里的 `[n]` 标记，流结束后一次性给。
+- **首 token 前可重试，已出 token 后不重试**：流式输出不可撤回，中途重试会重复输出；限流通常发生在请求发起时，首 token 前重试覆盖大部分场景。
+- **占位提示**：点发送立即 yield "正在检索并重排…"，缓解重排 9 秒白屏。
+- **实测发现**：流式只优化了 LLM 阶段（8.6 秒），首字延迟仍约 9 秒，瓶颈在重排。这个教训记为 Q38。
+
+### 阶段 4：降级与容错
+
+系统依赖三个外部组件：Chroma（向量库）、Cross-Encoder（重排）、智谱 API（生成）。任一失效时不让整页报错，而是降级或给出可读提示。
+
+**五个降级点**：
+
+| 代号 | 触发 | 处理 | 用户可见 |
+|---|---|---|---|
+| D1 | 重排失败（模型缺失/推理异常） | `degraded` 事件 → 用粗排 top4 继续生成 | ⚠️ 重排暂时不可用 + 答案 |
+| D2 | LLM 首 token 前限流，重试一次仍失败 | app.py 捕获 → 友好文案 | "生成服务繁忙，请稍后重试" |
+| D3 | 流中途 LLM 中断 | 保留半截答案 + 标注 | 半截答案 + "（生成中断：原因）" |
+| D4 | 检索为空 / 阈值拒答 | `refused` 事件 | REFUSAL_TEXT |
+| D5 | 重排返回空（防御分支） | `refused(empty)` | REFUSAL_TEXT |
+
+**两条设计取舍**：
+
+1. **D1 降级路径不判阈值**（C3）：粗排余弦分（-1~1）与重排 Cross-Encoder 分（0~1）量纲不同，用同一阈值比会误判。代价是粗排 top4 可能不相关、LLM 仍会生成。
+2. **非流式调用方对降级透明**：`answer()` 消费 stream 时遇 `degraded` 静默忽略，调用方无法感知"本次质量下降"。这是"不改 `RagAnswer` 结构"的必然代价，阶段 6 日志补可观测性。
+
+**已知限制**：
+
+- **免费档 GLM 高峰期慢**：实测正常问题单次总耗时可达 92 秒（其中首 token 前限流重试 10 秒、GLM 生成 77.7 秒）。这是平台侧，不是代码问题；流式下用户能看到逐字出，但首 token 仍可能等很久。
+- **占位提示不显示用时/阶段**：点发送后显示"正在检索并重排…"，但用户不知道卡在哪一步、还要等多久。分阶段文案（检索→重排→生成→重试）和计时记为后续优化项（S8）。
+
+---
+
 ## 未来工作
 
 - **nDCG@K**：当前用 Recall + MRR，未引入需要人工标注相关性等级的 nDCG。如果未来评估集扩大到 200 题以上，可引入 nDCG@5 衡量排序质量。
 - **RAGAS 框架**：当前手写评估脚本，只覆盖检索侧指标。生成侧 Faithfulness 评估可用 RAGAS（需要 LLM 调用，成本较高）。
 - **多语言嵌入模型**：换 `BAAI/bge-m3` 后重新评估，预期中文粗排 Recall@5 从 0.24 显著提升。
-- **混合检索**：引入 BM25 + 向量混合检索，可能改善「符号型」「表格行标签」类问题。
+- **混合检索（多文档场景）**：单文档实测无增量已回滚（见「阶段 1–2 的探索与负结果」）。多文档/大语料下 IDF 恢复区分度，`hybrid_search.py` 可直接复用，届时重跑 `evaluate_hybrid.py` 验证。
 - **chunk 切分细化**：当前 400 token 一段，可尝试 256 或 320，减少跨页 chunk 的粒度，改善「跨页误匹配」。
 - **对比型问题的针对性处理**：T5 双指标 0.25，说明「比较两个概念」需要专门的检索策略（比如拆成两个子问题分别检索，再合并）。
+- **重排耗时优化（S7）**：实测 6.3–15.2 秒不稳定，是首字延迟主要来源。候选：换更小 reranker、减 top_k、量化、CPU 线程调优。
+- **分阶段文案 + 计时（S8）**：占位提示升级为"正在检索…→正在重排…→正在生成…"，并显示已等待秒数。
