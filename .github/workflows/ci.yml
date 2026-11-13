@@ -51,23 +51,18 @@ jobs:
         with:
           path: ./models
           # 【核心逻辑】固定 key。只要模型不升级，后续每次 push 都能秒级命中。
-          # 若未来更换模型版本，需将此处的 v1 改为 v2 以强制刷新缓存。
           key: models-${{ runner.os }}-v1
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # 【假设】requirements.txt 里的版本锁定与本地一致，保证环境尽可能贴近。
           pip install -r requirements.txt
-          # 补装 CI 必须的测试框架与模型下载工具
           pip install pytest modelscope
 
       - name: Download models (if cache miss)
         run: |
           if [ ! -d "./models/bge-small-en-v1.5" ]; then
             echo "模型不存在，从 ModelScope 下载..."
-            # 【修复】将 Python 代码压成一行，避免 YAML 多行缩进导致 Python 报 IndentationError。
-            # 【性能优化】开启 max_workers=8，多线程下载加速。
             python -c "from modelscope import snapshot_download; snapshot_download('BAAI/bge-small-en-v1.5', local_dir='./models/bge-small-en-v1.5', max_workers=8); snapshot_download('BAAI/bge-reranker-base', local_dir='./models/bge-reranker-base', max_workers=8)"
           else
             echo "模型缓存命中，跳过下载。"
@@ -75,16 +70,13 @@ jobs:
 
       - name: Run core tests
         env:
-          # 【边界】强制离线，防止 transformers 在 CI 里尝试联网做版本检查而卡住。
           HF_HUB_OFFLINE: 1
           TRANSFORMERS_OFFLINE: 1
         run: |
           echo "=== 1. 解析与索引测试 ==="
-          # 【核心逻辑】这里会真实加载模型并写入 Chroma，验证本地与云端环境一致性。
           pytest test_ingest.py test_index_store.py -v
 
           echo "=== 2. 评估逻辑测试（排除依赖 API Key 的用例）==="
-          # 【契约 7.11】CI 不跑真实 API 测试，用 -k 排除掉需要 ZHIPU_API_KEY 的两个用例
           pytest test_eval.py -v -k "not test_answer_on_answerable and not test_chinese_query_uses_zh_threshold"
 
           echo "=== 3. QA 异常文案映射纯函数测试 ==="
@@ -94,7 +86,7 @@ jobs:
   # Job 2: 部署 (CD) - 只有 test 全绿才执行
   # ============================================================================
   deploy:
-    needs: test # 【核心逻辑】依赖 test Job 成功，实现"测试不过不部署"的底线。
+    needs: test
     runs-on: ubuntu-latest
     
     steps:
@@ -102,29 +94,40 @@ jobs:
         uses: actions/checkout@v4
 
       # ------------------------------------------------------------------------
-      # 7.1 同步代码到魔搭创空间
+      # 7.1 同步代码到魔搭创空间（纯 Git Push）
       # ------------------------------------------------------------------------
       - name: Sync to ModelScope
-        # 【假设】使用开源社区成熟的 action 处理魔搭的 token 认证。
-        uses: xiaoyao9184/modelscope-sync-action@main
-        with:
-          repo_path: '.'
-          modelscope_repo_id: ${{ secrets.MODELSCOPE_REPO_ID }}
-          modelscope_token: ${{ secrets.MODELSCOPE_TOKEN }}
-          repo_type: 'studio'
-          sdk_type: 'docker'
-          generate_message: true
+        env:
+          MS_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
+          MS_REPO: ${{ secrets.MODELSCOPE_REPO_ID }}
+        run: |
+          echo "=== 正在将代码推送到魔搭创空间 ==="
+          # 【核心逻辑】用 Git 原生方式认证，彻底绕开第三方 Action 的 OpenAPI 401 错误。
+          # 【假设】Token 和 Repo ID 已在 GitHub Secrets 配置好。
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          
+          # 强行移除旧的 remote，防止重跑时冲突
+          git remote remove modelscope || true
+          
+          # 拼接带 Token 认证的魔搭 Git 地址
+          git remote add modelscope "https://oauth2:${MS_TOKEN}@www.modelscope.cn/studios/${MS_REPO}.git"
+          
+          # 强制推送 main 分支，覆盖魔搭上的源码
+          git push modelscope HEAD:main --force
 
       # ------------------------------------------------------------------------
       # 7.2 触发魔搭重新部署
       # ------------------------------------------------------------------------
       - name: Trigger ModelScope Deploy
+        env:
+          MS_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
+          MS_REPO: ${{ secrets.MODELSCOPE_REPO_ID }}
         run: |
           echo "正在触发魔搭部署 API..."
-          # 【边界】只验证触发成功（HTTP 200），不等待魔搭后台的异步构建与重启。
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-            "https://www.modelscope.cn/openapi/v1/studios/${{ secrets.MODELSCOPE_REPO_ID }}/deploy" \
-            -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
+            "https://www.modelscope.cn/openapi/v1/studios/${MS_REPO}/deploy" \
+            -H "Authorization: Bearer ${MS_TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{}')
           
