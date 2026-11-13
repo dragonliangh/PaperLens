@@ -84,7 +84,7 @@ jobs:
           pytest test_ingest.py test_index_store.py -v
 
           echo "=== 2. 评估逻辑测试（排除依赖 API Key 的用例）==="
-          # 【契约 7.11】CI 不跑真实 API 测试，用 -k 排除掉 test_answer_on_answerable 和 test_chinese_query_uses_zh_threshold
+          # 【契约 7.11】CI 不跑真实 API 测试，用 -k 排除掉需要 ZHIPU_API_KEY 的两个用例
           pytest test_eval.py -v -k "not test_answer_on_answerable and not test_chinese_query_uses_zh_threshold"
 
           echo "=== 3. QA 异常文案映射纯函数测试 ==="
