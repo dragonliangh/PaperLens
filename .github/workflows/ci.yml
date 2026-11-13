@@ -1,0 +1,86 @@
+name: CI/CD - Test & Deploy to ModelScope
+
+on:
+  push:
+    branches: [ master, main ]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: ./models
+          key: models-${{ runner.os }}-v1
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Download models (if cache miss)
+        run: |
+          if [ ! -d "./models/bge-small-en-v1.5" ]; then
+            echo "模型不存在，从 ModelScope 下载..."
+            pip install modelscope
+            python -c "
+            from modelscope import snapshot_download
+            snapshot_download('BAAI/bge-small-en-v1.5', local_dir='./models/bge-small-en-v1.5')
+            snapshot_download('BAAI/bge-reranker-base', local_dir='./models/bge-reranker-base')
+            "
+          else
+            echo "模型缓存命中，跳过下载。"
+          fi
+
+      - name: Run core tests
+        env:
+          HF_HUB_OFFLINE: 1
+          TRANSFORMERS_OFFLINE: 1
+        run: |
+          echo "=== 1. 解析与索引测试 ==="
+          pytest test_ingest.py test_index_store.py -v
+
+          echo "=== 2. 评估逻辑纯函数测试 ==="
+          pytest test_eval.py -v -k "not needs_sample"
+
+          echo "=== 3. QA 异常文案映射纯函数测试 ==="
+          pytest test_qa.py -v -k "test_20e_error_to_message"
+
+      - name: Sync to ModelScope
+        uses: xiaoyao9184/modelscope-sync-action@main
+        with:
+          repo_path: '.'
+          modelscope_repo_id: ${{ secrets.MODELSCOPE_REPO_ID }}
+          modelscope_token: ${{ secrets.MODELSCOPE_TOKEN }}
+          repo_type: 'studio'
+          sdk_type: 'docker'
+          generate_message: true
+
+      - name: Trigger ModelScope Deploy
+        run: |
+          echo "正在触发魔搭部署 API..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "https://www.modelscope.cn/openapi/v1/studios/${{ secrets.MODELSCOPE_REPO_ID }}/deploy" \
+            -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "部署触发成功 (200 OK)。请注意：魔搭服务实际重启约需 15-30 分钟。"
+          else
+            echo "部署触发失败，HTTP 状态码: $HTTP_CODE"
+            exit 1
+          fi
