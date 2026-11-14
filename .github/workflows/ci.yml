@@ -55,31 +55,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # 【核心修复】关掉 Actions 里默认的 LFS 拉取，避免去下载那个早已被删的模型文件
           lfs: false
 
-      - name: Trigger ModelScope Rebuild via Git Push
-        env:
-          MS_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
-          MS_REPO: ${{ secrets.MODELSCOPE_REPO_ID }}
-          GIT_LFS_SKIP_SMUDGE: 1 # 【核心修复】禁止 Git LFS 下载文件
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          
-          # 1. 关联魔搭仓库
-          git remote add modelscope "https://oauth2:${MS_TOKEN}@www.modelscope.cn/studios/${MS_REPO}.git"
-          
-          # 2. 【核心逻辑】用 commit-tree 伪造一次基于魔搭 master 的提交
-          # 这样既不用拉取它那包含报错 LFS 文件的旧历史，又能让魔搭以为我们是它的下游
-          REMOTE_COMMIT=$(git ls-remote modelscope refs/heads/master | cut -f1)
-          
-          # 3. 修改 requirements 打破缓存
-          echo "# trigger rebuild $(date +%s)" >> requirements.txt
-          git add requirements.txt
-          
-          # 4. 创建一个新提交，把它的 parent 设为魔搭当前的 HEAD
-          NEW_COMMIT=$(git commit-tree HEAD^{tree} -p $REMOTE_COMMIT -m "chore: trigger modelscope rebuild")
-          
-          # 5. 推送这个新提交到魔搭 master 分支
-          git push modelscope $NEW_COMMIT:master
+      - name: Sync to ModelScope
+        uses: xiaoyao9184/modelscope-sync-action@main
+        with:
+          repo_path: '.'
+          modelscope_repo_id: ${{ secrets.MODELSCOPE_REPO_ID }}
+          modelscope_token: ${{ secrets.MODELSCOPE_TOKEN }}
+          repo_type: 'studio'
+          sdk_type: 'docker'
+          generate_message: true
