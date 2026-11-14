@@ -1,39 +1,15 @@
-# ==============================================================================
-# PaperLens CI/CD 流水线
-# ==============================================================================
-# 【模块职责】
-#   每次 push 到 main/master 分支时，在干净的 Linux 环境里自动完成：
-#   安装依赖 -> 下载模型 -> 跑核心测试 -> 同步到魔搭创空间 -> 触发部署。
-#   全程无需人工干预，测试不过则不部署。
-#
-# 【在架构中的位置】
-#   开发流程的自动化门禁。不参与运行时请求，但决定了代码能否上线。
-#
-# 【类级（Job 级）说明】
-#   拆分为 test 和 deploy 两个 Job。
-#   - test：负责环境准备、模型缓存和纯逻辑/依赖模型测试。
-#   - deploy：依赖 test 成功（needs: test），负责同步与触发魔搭部署。
-#   这样设计的好处是：若测试挂掉，部署 Job 根本不会启动，节省 runner 资源并清晰定位问题。
-#
-# 【边界级说明】
-#   - 不跑真实 API 测试：避免免费档 429 导致 CI 随机变红并阻塞部署（契约 7.11）。
-#   - 部署 API 只验 HTTP 200：魔搭重启耗时 15-30 分钟，CI 不等待异步结果。
-# ==============================================================================
-
 name: CI/CD - Test & Deploy to ModelScope
 
 on:
-  # 【触发条件】仅主干 push 触发。未来多人协作时需按 README 的演进指南加 PR 触发。
   push:
-    branches: [ master, main ]
+    branches: [ master ]
 
 jobs:
-  # ============================================================================
-  # Job 1: 测试 (CI)
-  # ============================================================================
+  # ==========================================================================
+  # Job 1: 测试 (CI) - 确保代码在干净环境能跑通
+  # ==========================================================================
   test:
     runs-on: ubuntu-latest
-    # 【边界】放宽到 30 分钟，防止下载模型或装依赖偶发超时。
     timeout-minutes: 30
 
     steps:
@@ -44,30 +20,24 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-          cache: 'pip' # 【性能优化】自动缓存 ~/.cache/pip，后续安装极快
+          cache: 'pip'
 
       - name: Cache models
         uses: actions/cache@v4
         with:
           path: ./models
-          # 【核心逻辑】固定 key。只要模型不升级，后续每次 push 都能秒级命中。
-          # 若未来更换模型版本，需将此处的 v1 改为 v2 以强制刷新缓存。
           key: models-${{ runner.os }}-v1
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # 【假设】requirements.txt 里的版本锁定与本地一致，保证环境尽可能贴近。
           pip install -r requirements.txt
-          # 补装 CI 必须的测试框架与模型下载工具
           pip install pytest modelscope
 
       - name: Download models (if cache miss)
         run: |
           if [ ! -d "./models/bge-small-en-v1.5" ]; then
             echo "模型不存在，从 ModelScope 下载..."
-            # 【修复】将 Python 代码压成一行，避免 YAML 多行缩进导致 Python 报 IndentationError。
-            # 【性能优化】开启 max_workers=8，多线程下载加速。
             python -c "from modelscope import snapshot_download; snapshot_download('BAAI/bge-small-en-v1.5', local_dir='./models/bge-small-en-v1.5', max_workers=8); snapshot_download('BAAI/bge-reranker-base', local_dir='./models/bge-reranker-base', max_workers=8)"
           else
             echo "模型缓存命中，跳过下载。"
@@ -75,78 +45,40 @@ jobs:
 
       - name: Run core tests
         env:
-          # 【边界】强制离线，防止 transformers 在 CI 里尝试联网做版本检查而卡住。
           HF_HUB_OFFLINE: 1
           TRANSFORMERS_OFFLINE: 1
         run: |
           echo "=== 1. 解析与索引测试 ==="
-          # 【核心逻辑】这里会真实加载模型并写入 Chroma，验证本地与云端环境一致性。
           pytest test_ingest.py test_index_store.py -v
 
           echo "=== 2. 评估逻辑测试（排除依赖 API Key 的用例）==="
-          # 【契约 7.11】CI 不跑真实 API 测试，用 -k 排除掉需要 ZHIPU_API_KEY 的两个用例
           pytest test_eval.py -v -k "not test_answer_on_answerable and not test_chinese_query_uses_zh_threshold"
 
           echo "=== 3. QA 异常文案映射纯函数测试 ==="
           pytest test_qa.py -v -k "test_20e_error_to_message"
 
-  # ============================================================================
-  # Job 2: 部署 (CD) - 只有 test 全绿才执行
-  # ============================================================================
+  # ==========================================================================
+  # Job 2: 部署 (CD) - 触发魔搭平台拉取 master 分支重新构建 Docker
+  # ==========================================================================
   deploy:
-    needs: test # 【核心逻辑】依赖 test Job 成功，实现"测试不过不部署"的底线。
+    needs: test
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          # 【核心修复】拉取完整的 Git 历史。
-          # 默认的浅克隆（fetch-depth: 1）会被魔搭的 Git 服务端拒绝（shallow update not allowed）。
-          fetch-depth: 0
-
-      # ------------------------------------------------------------------------
-      # 7.1 同步代码到魔搭创空间（纯 Git Push）
-      # ------------------------------------------------------------------------
-      - name: Sync to ModelScope
-        env:
-          MS_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
-          MS_REPO: ${{ secrets.MODELSCOPE_REPO_ID }}
+      - name: Trigger ModelScope Rebuild
         run: |
-          echo "=== 正在将代码推送到魔搭创空间 ==="
-          # 【核心逻辑】用 Git 原生方式认证，彻底绕开第三方 Action 的 OpenAPI 401 错误。
-          # 【假设】Token 和 Repo ID 已在 GitHub Secrets 配置好。
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          
-          # 强行移除旧的 remote，防止重跑时冲突
-          git remote remove modelscope || true
-          
-          # 拼接带 Token 认证的魔搭 Git 地址
-          git remote add modelscope "https://oauth2:${MS_TOKEN}@www.modelscope.cn/studios/${MS_REPO}.git"
-          
-          # 强制推送 main 分支，覆盖魔搭上的源码
-          git push modelscope HEAD:main --force
-
-      # ------------------------------------------------------------------------
-      # 7.2 触发魔搭重新部署
-      # ------------------------------------------------------------------------
-      - name: Trigger ModelScope Deploy
-        env:
-          MS_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
-          MS_REPO: ${{ secrets.MODELSCOPE_REPO_ID }}
-        run: |
-          echo "正在触发魔搭部署 API..."
-          # 【边界】只验证触发成功（HTTP 200），不等待魔搭后台的异步构建与重启。
+          echo "正在通知魔搭重新构建..."
+          # 【核心逻辑】使用魔搭官方的 OpenAPI 触发构建（需在 Secrets 配好 MS_TOKEN）
+          # 【假设】你已经在 GitHub Secrets 配置了 MODELSCOPE_TOKEN 和 MODELSCOPE_REPO_ID
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-            "https://www.modelscope.cn/openapi/v1/studios/${MS_REPO}/deploy" \
-            -H "Authorization: Bearer ${MS_TOKEN}" \
+            "https://www.modelscope.cn/openapi/v1/studios/${{ secrets.MODELSCOPE_REPO_ID }}/deploy" \
+            -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{}')
           
           if [ "$HTTP_CODE" -eq 200 ]; then
-            echo "部署触发成功 (200 OK)。请注意：魔搭服务实际重启约需 15-30 分钟。"
+            echo "已成功通知魔搭，正在后台按 Dockerfile 构建。请去魔搭网页查看构建日志。"
           else
-            echo "部署触发失败，HTTP 状态码: $HTTP_CODE"
+            echo "通知失败，HTTP 状态码: $HTTP_CODE"
             exit 1
           fi
