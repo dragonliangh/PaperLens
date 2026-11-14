@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 【核心】必须拉全量历史，否则魔搭拒绝浅克隆
+          fetch-depth: 0
 
       - name: Set up Python 3.13
         uses: actions/setup-python@v5
@@ -61,17 +61,20 @@ jobs:
           MS_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
           MS_REPO: ${{ secrets.MODELSCOPE_REPO_ID }}
         run: |
-          # 【核心修复】打破 Docker 构建缓存（在 requirements 末尾加注释）
-          echo "# trigger rebuild $(date +%s)" >> requirements.txt
-          
+          # 1. 配置 Git 身份
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
-          git add requirements.txt
-          # 【修复】去掉 force 导致的报错，改为正常 commit
-          git commit -m "chore: trigger modelscope rebuild $(date +%s)"
           
-          # 推送到魔搭的 master 分支
+          # 2. 关联魔搭仓库
           git remote add modelscope "https://oauth2:${MS_TOKEN}@www.modelscope.cn/studios/${MS_REPO}.git"
           
-          # 【核心修复】去掉 --force，因为魔搭保护 master 分支不允许强制推送
+          # 3. 【核心修复】拉取魔搭的 master 分支（允许不相关的历史合并），解决 rejected 报错
+          git pull modelscope master --allow-unrelated-histories -m "merge modelscope changes" || true
+          
+          # 4. 打破 Docker 构建缓存（在 requirements 末尾加注释）
+          echo "# trigger rebuild $(date +%s)" >> requirements.txt
+          git add requirements.txt
+          git commit -m "chore: trigger modelscope rebuild $(date +%s)"
+          
+          # 5. 推送到魔搭的 master 分支
           git push modelscope master:master
