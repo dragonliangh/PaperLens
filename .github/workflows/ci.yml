@@ -67,22 +67,14 @@ jobs:
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
           
-          # 1. 关联魔搭仓库
+          # 1. 把当前所有代码强制加到一个新分支上
+          git checkout --orphan temp-master
+          git add -A
+          git commit -m "chore: force deploy to modelscope $(date +%s)"
+          
+          # 2. 关联魔搭仓库
           git remote add modelscope "https://oauth2:${MS_TOKEN}@www.modelscope.cn/studios/${MS_REPO}.git"
           
-          # 2. 【极其关键】拉取远端的初始提交，并强行允许不相关历史合并
-          # 这里加了 --no-rebase，防止 Git 的行为差异导致出错
-          git pull modelscope master --allow-unrelated-histories --no-rebase -m "merge modelscope init commit" || true
-          
-          # 3. 如果拉下来产生冲突，把他们的改动覆盖掉（以我们的代码为准）
-          # 因为魔搭的初始提交只有个默认的 README 或 .gitignore，我们不需要它
-          git checkout --ours . 2>/dev/null || true
-          git add .
-          
-          # 4. 打破 Docker 构建缓存（在合并后修改，防止冲突）
-          echo "# rebuild trigger $(date +%s)" >> requirements.txt
-          git add requirements.txt
-          git commit -m "chore: trigger modelscope rebuild $(date +%s)" || true
-          
-          # 5. 推送到魔搭
-          git push -u modelscope master:master  
+          # 3. 强行推这个新分支到魔搭的 master
+          # 因为魔搭刚建的空空间通常不会锁死 master 的强推（如果锁了会报 protected branch）
+          git push modelscope temp-master:master --force
