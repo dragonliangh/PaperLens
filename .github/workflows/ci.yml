@@ -67,13 +67,13 @@ jobs:
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
           
-          # 1. 结合弹窗给出的官方 URL 格式！
+          # 1. 关联魔搭仓库（使用纯 Token 拼接）
           git remote add modelscope "https://oauth2:${MS_TOKEN}@www.modelscope.cn/studios/${MS_REPO}.git"
           
           # 2. 打破 Docker 构建缓存
           echo "# rebuild trigger $(date +%s)" >> requirements.txt
           git add requirements.txt
-          git commit -m "chore: trigger modelscope rebuild"
+          git commit -m "chore: trigger modelscope rebuild $(date +%s)"
           
-          # 3. 直接推 master 分支（如果魔搭后台是干净的，绝对能正常 fast-forward）
-          git push modelscope master:master
+          # 3. 推送到全新的、空的 master 分支，加上 -u 设置上游追踪
+          git push -u modelscope master:master
