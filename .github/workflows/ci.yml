@@ -67,14 +67,26 @@ jobs:
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
           
-          # 1. 把当前所有代码强制加到一个新分支上
-          git checkout --orphan temp-master
-          git add -A
-          git commit -m "chore: force deploy to modelscope $(date +%s)"
+          # 1. 【核心步骤】将当前 Github 仓库的所有代码暂时移出工作区
+          mkdir -p /tmp/source_code
+          cp -r . /tmp/source_code/
           
-          # 2. 关联魔搭仓库
+          # 2. 关联魔搭仓库并拉取它的初始 master 分支
           git remote add modelscope "https://oauth2:${MS_TOKEN}@www.modelscope.cn/studios/${MS_REPO}.git"
           
-          # 3. 强行推这个新分支到魔搭的 master
-          # 因为魔搭刚建的空空间通常不会锁死 master 的强推（如果锁了会报 protected branch）
-          git push modelscope temp-master:master --force
+          # 3. 强制将本地分支重置到魔搭的初始 commit（历史完全对齐，无需 pull）
+          git fetch modelscope master
+          git reset --hard modelscope/master
+          
+          # 4. 清空工作区当前的文件，并把刚才备份的 Github 代码拷贝回来
+          # 这样就相当于我们在它的初始 commit 上，把你的所有代码加了一遍
+          rm -rf ./*
+          cp -r /tmp/source_code/* .
+          
+          # 5. 打破缓存并正常提交
+          echo "# rebuild trigger $(date +%s)" >> requirements.txt
+          git add -A
+          git commit -m "chore: trigger modelscope rebuild $(date +%s)"
+          
+          # 6. 正常推送（此时是基于远端最新 commit 的普通 push，绝不会被拒绝）
+          git push modelscope master:master
