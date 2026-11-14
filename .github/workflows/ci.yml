@@ -67,13 +67,22 @@ jobs:
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
           
-          # 1. 关联魔搭仓库（使用纯 Token 拼接）
+          # 1. 关联魔搭仓库
           git remote add modelscope "https://oauth2:${MS_TOKEN}@www.modelscope.cn/studios/${MS_REPO}.git"
           
-          # 2. 打破 Docker 构建缓存
+          # 2. 【极其关键】拉取远端的初始提交，并强行允许不相关历史合并
+          # 这里加了 --no-rebase，防止 Git 的行为差异导致出错
+          git pull modelscope master --allow-unrelated-histories --no-rebase -m "merge modelscope init commit" || true
+          
+          # 3. 如果拉下来产生冲突，把他们的改动覆盖掉（以我们的代码为准）
+          # 因为魔搭的初始提交只有个默认的 README 或 .gitignore，我们不需要它
+          git checkout --ours . 2>/dev/null || true
+          git add .
+          
+          # 4. 打破 Docker 构建缓存（在合并后修改，防止冲突）
           echo "# rebuild trigger $(date +%s)" >> requirements.txt
           git add requirements.txt
-          git commit -m "chore: trigger modelscope rebuild $(date +%s)"
+          git commit -m "chore: trigger modelscope rebuild $(date +%s)" || true
           
-          # 3. 推送到全新的、空的 master 分支，加上 -u 设置上游追踪
-          git push -u modelscope master:master
+          # 5. 推送到魔搭
+          git push -u modelscope master:master  
