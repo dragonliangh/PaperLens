@@ -716,6 +716,7 @@ T4 粗排 Recall@5 = 0.75，精排 Recall@4 = 0.50：4 道 T4 题里，粗排命
   2. 用原生 Git 命令结合文件覆盖，绕开魔搭的保护分支（Protected Branch）和 LFS 残留限制。
   3. 修改 `requirements.txt` 强制打破镜像层缓存，确保每次构建使用的是最新代码。
   4. 部署不再「推完就走」：`deploy` Job 末尾轮询空间状态，把「构建或启动失败」变成 CI 红灯。判据要求 `DeployedTime` 晚于本次 push 时间，避免旧实例仍在 `Running` 时被误判成新版本已上线。
+  5. 同一分支加 `concurrency` 组且 `cancel-in-progress: true`：新 push 自动取消仍在跑的旧 run。否则两个 run 会同时向魔搭推送，构建排队叠成两个，耗时翻倍（实测过一次）。
 
 ### 演进原则
 

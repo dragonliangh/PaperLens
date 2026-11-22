@@ -20,6 +20,12 @@ on:
   push:
     branches: [ master ]
 
+# 同一分支只保留一个流水线实例：新 push 自动取消仍在跑的旧 run
+# （否则两个 run 会同时向魔搭推送，把构建排成两个，耗时翻倍）
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ============================================================================
   # Job 1: 测试 (CI)
