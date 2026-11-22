@@ -134,27 +134,32 @@ jobs:
           start_ts=$(date +%s)
           echo "push_time=${start_ts}"
 
-          # 1) 显式触发部署（带 token）；失败不阻断，因为 git push 本身也会触发构建
+          # 1) 显式调 deploy（token 已验证可用于 openapi；非必需，push 本身会触发构建）
           code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 20 -X POST \
                  -H "Authorization: Bearer ${MS_TOKEN}" -H "Content-Type: application/json" \
                  "${API_OPEN}/deploy" 2>/dev/null)
-          echo "deploy_api_http=${code}（200/201 表示 token 有效且已显式触发；401 表示 token 失效，退回 push 触发这条路径）"
+          echo "deploy_api_http=${code}"
 
-          # 2) 轮询：不依赖 token，用公开只读接口；要求 DeployedTime 晚于 push_time 才算真构建成功
+          # 2) 轮询：openapi 返回壳是小写 data/status，web 接口是大写 Data/Status，两者都兼容
+          #    成功判据 = Running 且 DeployedTime 晚于 push_time（防止旧实例 Running 误判）
           for i in $(seq 1 60); do
             body=$(curl -sS --max-time 20 "${API_WEB}" 2>/dev/null)
-            st=$(printf '%s' "$body" | python3 -c "import sys,json;d=json.load(sys.stdin);print((d.get('Data') or {}).get('Status') or 'PARSE_ERR')" 2>/dev/null)
-            dt=$(printf '%s' "$body" | python3 -c "import sys,json;d=json.load(sys.stdin);print((d.get('Data') or {}).get('DeployedTime') or 0)" 2>/dev/null)
-            if [ -z "$st" ]; then st="PARSE_ERR"; fi
-            if [ -z "$dt" ]; then dt=0; fi
-            echo "[$i] status=$st deployed_time=$dt"
+            st=PARSE_ERR; dt=0
+            parsed=$(printf '%s' "$body" | python3 -c "import sys,json;d=json.load(sys.stdin);o=d.get('data') if isinstance(d.get('data'),dict) else (d.get('Data') or {});o=o if isinstance(o,dict) else {};print((o.get('status') or o.get('Status') or 'PARSE_ERR'),(o.get('deployedTime') or o.get('DeployedTime') or 0))" 2>/dev/null)
+            if [ -n "$parsed" ]; then
+              st=$(echo "$parsed" | awk '{print $1}')
+              dt=$(echo "$parsed" | awk '{print $2}')
+            else
+              echo "  （解析失败，响应前 120 字符：$(printf '%s' "$body" | head -c 120)）"
+            fi
+            echo "[$i] status=${st} deployed_time=${dt}"
             case "$st" in
-              *Failed*) echo "BUILD_FAILED（构建失败，需人工取构建日志）"; exit 1 ;;
+              *Failed*) echo "BUILD_FAILED：构建或启动失败，需人工取构建日志"; exit 1 ;;
               Running)
                 if [ "$dt" -gt "$start_ts" ] 2>/dev/null; then
-                  echo "BUILD_OK deployed_time=$dt（晚于 push 时间，确认本次构建产物已上线）"; exit 0
+                  echo "BUILD_OK deployed_time=${dt}（晚于 push 时间，本次产物已上线）"; exit 0
                 else
-                  echo "  旧实例 Running 但 DeployedTime 未更新，继续等待本次构建"
+                  echo "  旧实例 Running 且 DeployedTime 未更新，继续等待本次构建"
                 fi ;;
             esac
             sleep 30
