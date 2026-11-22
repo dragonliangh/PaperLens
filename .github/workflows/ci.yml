@@ -87,7 +87,9 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 【时间预算】平台构建实测 6–33 分钟（2026-11-22 本次 33 分钟），
+    # 轮询上限 60 分钟；job 总上限留到 75 分钟，避免"镜像刚好上线时 CI 已判超时"。
+    timeout-minutes: 75
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -148,7 +150,13 @@ jobs:
 
           # 2) 轮询：openapi 返回壳是小写 data/status，web 接口是大写 Data/Status，两者都兼容
           #    成功判据 = Running 且 DeployedTime 晚于 push_time（防止旧实例 Running 误判）
-          for i in $(seq 1 60); do
+          #    【为什么用截止时间而不是固定轮数】2026-11-22 曾用 `for i in seq 1 60`（≈30 分钟），
+          #    结果平台构建用了 33 分钟，循环在镜像上线前 15 秒放弃 → CI 判红，而实际已上线（假阴性）。
+          #    改为 60 分钟绝对截止时间，轮数只作日志计数。
+          i=0
+          deadline=$(( $(date +%s) + 3600 ))
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            i=$((i + 1))
             body=$(curl -sS --max-time 20 "${API_WEB}" 2>/dev/null)
             st=PARSE_ERR; dt=0
             parsed=$(printf '%s' "$body" | python3 -c "import sys,json;d=json.load(sys.stdin);o=d.get('data') if isinstance(d.get('data'),dict) else (d.get('Data') or {});o=o if isinstance(o,dict) else {};print((o.get('status') or o.get('Status') or 'PARSE_ERR'),(o.get('deployedTime') or o.get('DeployedTime') or 0))" 2>/dev/null)
@@ -170,4 +178,4 @@ jobs:
             esac
             sleep 30
           done
-          echo "TIMEOUT：30 分钟内未见新构建产物上线"; exit 1
+          echo "TIMEOUT：60 分钟内未见新构建产物上线（最后一轮 status=${st}）"; exit 1
