@@ -48,7 +48,10 @@
         "6-10": 6,
         "11-20": 6,
         "miss": 6
-      }
+      },
+      "fine_recall_at_4_gold_given": 0.7273,
+      "fine4_lost_from_coarse4_rate": 0.1481,
+      "window_truncation_rate": 0.16
     }
   },
   "zh": {
@@ -94,7 +97,10 @@
         "6-10": 9,
         "11-20": 2,
         "miss": 13
-      }
+      },
+      "fine_recall_at_4_gold_given": 0.6757,
+      "fine4_lost_from_coarse4_rate": 0.2727,
+      "window_truncation_rate": 0.18
     }
   }
 }

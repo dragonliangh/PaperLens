@@ -77,5 +77,6 @@
         "10": 1
       }
     }
-  }
+  },
+  "_note": "历史快照（2026-11-07，zh 阈值 0.15，旧口径 6 个指标）。与现行口径的正式对比见 eval_report_zh015.json / eval_report_zh018.json；本文件只在需要引用旧口径的 fine_recall_at_20_gold_given（EN 0.7273 / ZH 0.6757）时使用。"
 }

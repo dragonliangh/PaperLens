@@ -383,13 +383,16 @@
 
 **诊断项**
 - `coarse_recall_at_20`：粗排天花板。
-- `fine_recall_at_20_gold_given`：粗排 top-20 命中后，精排 top-4 保住的比例。
+- `fine_recall_at_4_gold_given`：给定粗排 top-20 命中，精排 top-4 保住的比例（EN 0.7273 / ZH 0.6757）。
+- `fine4_lost_from_coarse4_rate`：粗排 top-4 已命中、却被重排挤出 top-4 的比例（纯重排丢失，EN 0.1481 / ZH 0.2727）。
+- `window_truncation_rate`：粗排 5-20 命中、但没进精排 top-4 的比例（窗口截断，扩 K 才有救，EN 0.16 / ZH 0.18）。
+- `fine_recall_at_20_gold_given`：粗排 20 条**全量重排**后 gold 是否仍在列表里——候选集不变，故恒为 1.0，仅作参考项。
 - `false_reject_rate`：可答题被误拒的比例。
 - `n_fine_scored`：精排有效题数。
-- `coarse_rank_histogram`：粗排命中排名直方图。
+- `coarse_rank_histogram` / `fine_rank_histogram`：粗排 / 精排命中排名直方图。
 
 **接口**
-- `evaluate.py`：`main()` 跑完整评估，打印表格 + 写 `eval_report.json`。
+- `evaluate.py`：`main()` 跑完整评估，打印表格 + 写报告；`--report` 改输出路径，`--details` 额外落盘逐题明细，`--zh-threshold` / `--en-threshold` 临时覆盖阈值。
 
 **验收标准**
 - 15a `eval_set.json` 140 条，id 连续。
@@ -421,9 +424,9 @@
 | C25 | `en_021` gold_page 9→10、`en_041` gold_page 5→4 | 结论句实际在 Section 7.1（page 10）；"memory and storage" 的概括在 Section 4.2（page 4） |
 | C26 | 中文题 `gold_keywords` 统一用英文原词 | 中文题检索的是英文原文，keywords 是「在检索结果里找什么」的锚点。用中文译词在英文原文里匹配失败，中文指标失真 |
 | C27 | `thresholds.json` 从单值改为按语言分设（en=0.3, zh=0.18） | 中文误拒率在单阈值阶段明显高于英文，原因是 BGE 单语模型跨语言匹配分数天然偏低。分语言设阈值后误拒率 0.34、拒答准确率 0.70（`eval_report.json`） |
-| C28 | 阈值从 0.15 回调到 0.18 | 实测 0.15 相比 0.18：误拒率只改善 2%，但拒答准确率损失 5%，半相关题损失 12.5%。边际收益为负，回调 |
+| C28 | 阈值从 0.15 回调到 0.18 | 2026-11-22 用同一次遍历的逐题明细重做了正式对比：召回类指标两档完全相同，差异只在拒答——0.18 比 0.15 多拦 1 道半相关不可答题（semi_related 3/8→4/8，拒答 0.65→0.70），代价是多误拒 1 道可答题（16/50→17/50）；unrelated 与 counterfactual 两档不动。即"一换一"，选 0.18 依据是"漏答代价 > 拒答代价"的价值排序（旧文"损失 5%/12.5%、边际收益为负"的表述基于两份非同一批数据的报告，已作废） |
 | C29 | `qa.py` 新增 `_detect_lang` 和 `_get_threshold` | 支持按语言选阈值；兼容旧格式（数字 → `{"default": 数字}`） |
-| C30 | `evaluate.py` 新增 `fine_recall_at_20_gold_given` 诊断项 | 区分「粗排漏召回」vs「精排排错」。该值随评估脚本版本变化：`eval_report_v1.json` 为 EN 0.7273 / ZH 0.6757，当前 `eval_report.json` 两语言均为 1.0，故不引用单一百分比 |
+| C30 | `evaluate.py` 的 `fine_recall_at_20_gold_given` 口径修正 | 原实现是"粗排 20 条全量重排后 gold 是否仍在列表里"，候选集没变 → 恒为 1.0，不能证明重排没丢答案（旧报告里的 0.7273/0.6757 其实是"给定粗排 20 命中、精排 top-4 保住率"）。2026-11-22 补三个 top-4 口径诊断项：`fine_recall_at_4_gold_given`（EN 0.7273 / ZH 0.6757，与旧值逐位一致）、`fine4_lost_from_coarse4_rate`（EN 0.1481 / ZH 0.2727）、`window_truncation_rate`（EN 0.16 / ZH 0.18）；恒 1.0 的旧项降级为参考项并列展示 |
 
 ---
 
@@ -580,3 +583,5 @@
 | C42 | 阶段 7 CI/CD 流水线：单 Job 串行 + 模型缓存 + 触发部署 | ① 新建 `.github/workflows/ci.yml`：`push` 主干触发，拆分为 test 和 deploy 两个 Job。② 测试选型：跑 `test_ingest`、`test_index_store`、纯逻辑评估测试，排除真实 API 测试。③ 模型缓存：配合 `snapshot_download` 多线程下载并缓存 `./models`。④ 同步（D4）：放弃第三方 Action，改为原生 `git fetch` + `git reset --hard` + 文件覆盖拷贝，彻底解决远端分支保护（protected branch）和 LFS 残留导致的强推/合并失败。⑤ 部署（D5）：利用 `echo` 追加注释打破 Docker 构建缓存，通过 `sed` 清理乱码防止 `pip` 解析失败，由魔搭平台自动触发 Dockerfile 重建；构建结果由 `deploy` Job 轮询校验（见 C45）。 |
 | C43 | 阶段 7 未来演进文档：README 新增「CI/CD 与未来演进」一节 | 总结单人向多人协作演进的方法。① 触发层：引入 PR 和 Branch Protection。② 部署层：引入 GitHub Environments 和人工 Approve。③ 权限层：Secrets 迁移到 Environment 级别，引入 CODEOWNERS。明确记录演进代价：审批增加延迟、分支保护变严、Secrets 迁移有成本。 |
 | C45 | 部署门禁：`deploy` Job 轮询空间状态，构建或启动失败即 CI 红 | ① 现象：曾出现「GitHub CI 全绿、魔搭侧构建失败」（2026-11-22 11:34 状态 `BuildImageFailed`），CI 只负责 push，构建结果无人校验。② 做法：push 后用公开只读接口 `https://www.modelscope.cn/api/v1/studio/{repo}` 读 `Data.Status` 与 `Data.DeployedTime`；判成功需 `Status=Running` **且** `DeployedTime` 晚于本次 push 时间（否则旧实例的 `Running` 会被误判成新版本已上线），出现 `*Failed*` 或 30 分钟未上线则 exit 1。③ 另调 `POST /openapi/v1/studios/{repo}/deploy`（Bearer token，实测 HTTP 200）作显式触发，失败不阻断——`git push` 本身就会触发构建（构建日志 `CloneRepoList` 记到的提交正是 CI 写入的 `chore: trigger modelscope rebuild`，即为反证）。④ 踩坑：首版按 `d['Data']` 取值，而 openapi 的返回壳是小写 `data/status`，导致 40 轮全部 `PARSE_ERR`；拉日志的 curl 又没设 `--max-time`，把 job 拖到 45 分钟上限。改为大小写双兼容 + 所有请求限时。⑤ 并发去重：workflow 级 `concurrency: group=ci-${ref}` + `cancel-in-progress: true`——两个 active run 同时向魔搭推送会把构建排成两个，实测耗时明显拉长；新 push 应直接取消旧 run。 |
+| C46 | 隐私口径收敛：日志**任何级别都不记 query 原文**，不提供 DEBUG 开关 | ① 原状：`_log_query` 末尾有一段 `if logger.level("DEBUG").no >= logger.level("INFO").no: logger.bind(query=query).debug(...)`，注释称"仅 DEBUG 时才记原文"。② 三层问题：判据是两个级别常量相比（10 >= 20）恒为假，与运行环境无关；即使改成 `<=`，`_setup_logging()` 的两个 sink 都写死 `level="INFO"`，DEBUG 仍不落盘；全项目没有任何 `LOG_LEVEL` 环境变量，"开 DEBUG"这个动作不存在。隐私当时靠两层巧合守住，而注释是个"改一行就能看到原文"的陷阱。③ 处置：整段删除，契约 5.3 改为"任何级别都不记原文"。理由——日志会被上传/共享，泄漏不可回收；排查靠结构化字段（`lang`/各段耗时/`top_score`/`refused`）定位问题类型，必要时让用户复述。④ 不采用"配置驱动开 DEBUG"：那等于把一条随时可能误开的泄漏路径留在代码里，收益（本机复现原文）远小于风险。⑤ 验证：grep 全仓 `query_text` 无残留；跑一轮真实请求后 `Select-String -Path logs/app.log -Pattern "<问题原文>"` 仍无输出。 |
+| C47 | 评估数据体系：一次遍历产出「逐题明细 + 双阈值报告 + K 两表」 | ① 前置问题：`eval_report.json`（zh 0.18）与 `eval_report_v1.json`（zh 0.15）非同源，且旧报告由未提交的 `evaluate.py` 生成；全仓无逐题 rank+score 明细，K=4 vs K=5 无法拆开讲。② `evaluate.py` 新增 `--report` / `--details` / `--zh-threshold` / `--en-threshold`，`compute_metrics` 额外收集 `_details`（`qid/lang/gold_page/coarse_rank/coarse_gold_score/coarse_top1_score/fine_rank/fine_gold_score/fine_top1_score/threshold/refused`），由 `main()` pop 后单独落盘 `eval_details.json`（140 条），不污染报告字段。③ 召回类指标与阈值无关、拒答类只依赖每题 top1 分数，故 zh 0.15/0.18 由同一份明细离线重算为 `eval_report_zh015.json` / `eval_report_zh018.json`，**不重跑推理**；派生出的 0.15 与 2026-11-07 快照逐条吻合（0.65/0.32/0.375），反证两份报告本就同源。④ `diag_ranks.py` 从"自己再跑 140 题"改为读明细的离线分析器，出四张表：排名分段、分数分布（top1 与 gold 的均值/分位数）、区间迁移、阈值敏感度（0.15/0.18/0.30 三档）。⑤ K 结论：Top-5 的增量是 EN 精排 0 题、ZH 1 题；且 6-10 段之后 gold 分数中位已跌到 0.042–0.181、11-20 段 EN 仅 0.003，这些"命中"在生成阶段不可用 → `final_k=4` 有两条独立证据，不再只靠直方图。⑥ `eval_report_v1.json` 保留原名，新增 `_note` 键注明"历史快照（旧口径 6 指标），正式对比见 zh015/zh018"。⑦ 入库：`test_final.py` 加 `__main__` 保护（pytest 收集 0 项、不重写权重/不重建索引），`diag_ranks.py`、`evaluate.py` 一并提交，消除"README 目录树列了仓库里没有的文件"的不一致。 |

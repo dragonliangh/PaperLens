@@ -19,7 +19,8 @@
   - 决策 6：阈值写在 thresholds.json，支持按语言分别设。
   - 决策 8：单文件，五个公开函数。
   - 额外诊断项：coarse_recall_at_20、fine_recall_at_20_gold_given、
-    false_reject_rate、coarse_rank_histogram、n_fine_scored。
+    fine_recall_at_4_gold_given、fine4_lost_from_coarse4_rate、
+    window_truncation_rate、false_reject_rate、coarse_rank_histogram、n_fine_scored。
 
 【指标口径】
   - 粗排：基于 search(top_k=20) 的结果，记录第一个命中 gold_page 的排名。
@@ -43,6 +44,10 @@
     * 新增 `--report` / `--details` / `--zh-threshold` / `--en-threshold`。
       有了明细，zh 0.15 与 0.18 的对比、K=4 与 K=5 的分段表都可以在同一批
       分数上离线算，不需要把 140 题重跑两遍。
+    * 修正 `fine_recall_at_20_gold_given` 恒为 1.0 的误导：新增三个按 top-4 窗口
+      算的诊断项——`fine_recall_at_4_gold_given`（粗排 20 命中里精排 top-4 保住率）、
+      `fine4_lost_from_coarse4_rate`（粗排 top-4 被重排挤出的比例）、
+      `window_truncation_rate`（粗排 5-20 命中但没进 top-4 的比例，扩 K 才有救）。
 
 【对外暴露】
   - main()：跑完整评估，打印表格 + 写报告（可选落盘逐题明细）。
@@ -185,6 +190,15 @@ def compute_metrics(items: list[dict], thresholds: dict, desc: str = "") -> dict
     false_rejects = 0
     gold_in_coarse_and_fine = 0
     gold_in_coarse_lost_in_fine = 0
+    # 【第 7 块第三轮补充】损失拆解：把「没进精排 top-4」的题分成三类
+    #   ① 粗排根本没召回（coarse miss）        -> 检索层问题
+    #   ② 粗排 top-4 命中但被重排挤出去         -> 重排丢失（真丢答案）
+    #   ③ 粗排落在 5-20、重排没捞回 top-4       -> 窗口截断（扩 K 才有救）
+    n_coarse_top20_hit = 0
+    gold_in_fine4_given_coarse20 = 0
+    n_coarse_top4_hit = 0
+    lost_from_coarse4 = 0
+    window_truncation = 0
 
     t_start = time.time()
     total_ans = len(answerable)
@@ -232,6 +246,20 @@ def compute_metrics(items: list[dict], thresholds: dict, desc: str = "") -> dict
                 gold_in_coarse_and_fine += 1
             else:
                 gold_in_coarse_lost_in_fine += 1
+
+        # 诊断：损失拆解（口径见上方注释）
+        if coarse_rank is not None and coarse_rank <= COARSE_TOP_K:
+            n_coarse_top20_hit += 1
+            if fine_rank is not None and fine_rank <= 4:
+                gold_in_fine4_given_coarse20 += 1
+        if coarse_rank is not None and coarse_rank <= 4:
+            n_coarse_top4_hit += 1
+        if coarse_rank is not None and coarse_rank <= 4:
+            if fine_rank is None or fine_rank > 4:
+                lost_from_coarse4 += 1
+        elif coarse_rank is not None and coarse_rank <= COARSE_TOP_K:
+            if fine_rank is None or fine_rank > 4:
+                window_truncation += 1
 
         top_score = fine_all[0].score if fine_all else 0.0
         if top_score < threshold:
@@ -329,6 +357,20 @@ def compute_metrics(items: list[dict], thresholds: dict, desc: str = "") -> dict
         gold_in_coarse_and_fine / total_gold_in_coarse
         if total_gold_in_coarse else 0.0
     )
+    # 【口径说明】上面这个值是「粗排 20 条全量重排后 gold 还在不在」——
+    # 候选集没变，所以恒为 1.0（全部 gold 只要在粗排里就还在重排列表里），
+    # 它证明不了「重排没丢答案」。真正有意义的是按 top-4 窗口算：
+    #   ① 给定粗排 20 命中，精排 top-4 还保住多少（含窗口截断损失）
+    #   ② 粗排 top-4 命中里，被重排挤出去多少（纯重排丢失）
+    #   ③ 粗排 5-20 命中、但没进精排 top-4（窗口截断，扩 K 才有救）
+    fine_recall_at_4_gold_given = (
+        gold_in_fine4_given_coarse20 / n_coarse_top20_hit
+        if n_coarse_top20_hit else 0.0
+    )
+    fine4_lost_from_coarse4_rate = (
+        lost_from_coarse4 / n_coarse_top4_hit if n_coarse_top4_hit else 0.0
+    )
+    window_truncation_rate = window_truncation / n_ans
 
     refusal_accuracy = {
         cat: (d["refused"] / d["total"] if d["total"] else 0.0)
@@ -360,6 +402,9 @@ def compute_metrics(items: list[dict], thresholds: dict, desc: str = "") -> dict
         "diagnostics": {
             "coarse_recall_at_20": round(coarse_recall_20, 4),
             "fine_recall_at_20_gold_given": round(fine_recall_at_20_gold_given, 4),
+            "fine_recall_at_4_gold_given": round(fine_recall_at_4_gold_given, 4),
+            "fine4_lost_from_coarse4_rate": round(fine4_lost_from_coarse4_rate, 4),
+            "window_truncation_rate": round(window_truncation_rate, 4),
             "false_reject_rate": round(false_reject_rate, 4),
             "n_fine_scored": n_fine_scored,
             "coarse_rank_histogram": _histogram(coarse_ranks),
@@ -456,7 +501,10 @@ def main():
 
     diag_rows = [
         ("粗排 Recall@20（天花板）", "coarse_recall_at_20", 4),
-        ("精排 Recall@4（给定粗排命中）", "fine_recall_at_20_gold_given", 4),
+        ("精排 Recall@4（粗排20命中时）", "fine_recall_at_4_gold_given", 4),
+        ("粗排 top4 被重排挤出率", "fine4_lost_from_coarse4_rate", 4),
+        ("窗口截断率（5-20 没进 top4）", "window_truncation_rate", 4),
+        ("精排存活率（全量重排后 gold 仍在；恒 1.0）", "fine_recall_at_20_gold_given", 4),
         ("误拒率（可答题被拒）", "false_reject_rate", 4),
         ("精排有效题数", "n_fine_scored", 0),
     ]

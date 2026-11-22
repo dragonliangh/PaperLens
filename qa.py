@@ -47,7 +47,7 @@
     - 4.9：不引入新异常类型；真异常仍抛。
   阶段 5 契约：
     - 5.2：loguru，控制台人类可读 + 文件 JSON（logs/app.log，按天轮转留 7 天）。
-    - 5.3：INFO 默认；DEBUG 才记 query 原文。
+    - 5.3：任何级别都不记 query 原文（只记 query_len），不提供 DEBUG 开关。
     - 5.4：一条/请求汇总日志，字段含 lang/query_len/retrieval_ms/rerank_ms/llm_ms/
       total_ms/n_candidates/top_score/refused/refuse_reason/degraded/degrade_reason/
       prompt_tokens/completion_tokens/total_tokens。
@@ -109,6 +109,12 @@
       导致每次请求多打一次被拒请求 + WARNING。改为探测后不支持就直接不带。
     * 运行时降级分支只匹配明确的 stream_options / include_usage 关键词，
       去掉过宽的 "unknown" 条件（避免把无关错误也降级）。
+  - 阶段 5（隐私收敛 / 本次）：
+    * 删除 `_log_query` 末尾的 DEBUG 记原文分支。原判据
+      `logger.level("DEBUG").no >= logger.level("INFO").no`（10 >= 20）恒为假，
+      且两个 sink 都写死 level="INFO"，该分支从未执行、也无从开启。
+    * 契约口径改为"任何级别都不记原文"：隐私靠代码里不存在这行保证，
+      不靠一个可被误修成泄漏源的开关。
 
 【对外暴露】
   - answer(query, top_k=20, final_k=4) -> RagAnswer ：非流式主入口。
@@ -260,8 +266,11 @@ def _log_query(
       从中取 prompt_tokens / completion_tokens / total_tokens，取不到为 None。
 
     【隐私（L3）】
-      默认 INFO 级只记 query_len，不记 query 原文。
-      DEBUG 级才记 query 原文——通过 logger.bind(query=query).debug(...) 实现。
+      只记 query_len，**任何级别都不记 query 原文**，且不提供"开 DEBUG 看原文"的开关。
+      理由：日志文件会被上传/共享，泄漏一次就无法回收；而排查可以靠结构化字段
+      （lang / 耗时 / refused / top_score）定位，必要时让用户复述问题。
+      历史上这里有一个"DEBUG 级记原文"的分支，但判据恒为假、双 sink 又写死 INFO，
+      属于既不可用又容易被误修成泄漏源的死代码，已整体删除（见 DESIGN C46）。
 
     【核心逻辑】
       用 logger.bind(**fields).info("query done")：bind 的字段进 JSON 的 record.extra，
@@ -291,10 +300,11 @@ def _log_query(
     )
     logger.bind(**fields).info("query done")
 
-    # L3：query 原文只在 DEBUG 级记。
-    if logger.level("DEBUG").no >= logger.level("INFO").no:
-        # 仅当 DEBUG 启用时才 bind 原文（避免无谓开销）。
-        logger.bind(event="query_text", query=query).debug("query text")
+    # L3：query 原文不进日志——任何级别都不记，也不提供开关（DESIGN C46）。
+    # 曾有一段 `if logger.level("DEBUG").no >= logger.level("INFO").no:` 包着
+    # `logger.bind(query=query).debug(...)` 的分支：两个级别常量相比恒为假（10 >= 20），
+    # 而两个 sink 又都写死 level="INFO"，所以它既不会执行、也不存在"开 DEBUG"这种操作；
+    # 留着只会让人误以为改成 `<=` 就能看到原文。隐私目标靠"代码里没有这行"保证。
 
 
 @dataclass
