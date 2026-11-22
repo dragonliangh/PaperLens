@@ -289,7 +289,7 @@ docker run --rm -p 7860:7860 -e ZHIPU_API_KEY="你的key" -v "${PWD}/models:/app
 python -c "from qa import answer; r = answer('How much does LoRA reduce trainable parameters?'); print(r.answer); [print(f'[{i+1}] {c.doc_name} p{c.page_start}-{c.page_end} | {c.chunk_id}') for i, c in enumerate(r.citations)]"
 ```
 
-返回 `RagAnswer`，字段与 `Citation` 定义见 `qa.py:301-337`：
+返回 `RagAnswer`，字段与 `Citation` 定义见 `qa.py:311`（`Citation`）/ `qa.py:334`（`RagAnswer`）：
 
 | 对象 | 字段 | 类型 |
 |---|---|---|
@@ -298,7 +298,7 @@ python -c "from qa import answer; r = answer('How much does LoRA reduce trainabl
 | | `usage` | `dict \| None`（当前恒为 `None`，token 只进日志，见 DESIGN C41③） |
 | `Citation` | `chunk_id` / `doc_name` / `page_start` / `page_end` / `text_snippet` | `str` / `str` / `int` / `int` / `str` |
 
-流式入口为 `answer_stream(query, top_k=20, final_k=4)`，产出四种事件：`token` / `citations` / `refused` / `degraded`（`qa.py:611-624`）。
+流式入口为 `answer_stream(query, top_k=20, final_k=4)`，产出四种事件：`token` / `citations` / `refused` / `degraded`（事件协议见 `qa.py:629-632`，实际发出位置 `qa.py:668-750`）。
 
 ### 跑评估
 
@@ -388,7 +388,7 @@ python evaluate_hybrid.py
 
 | 变量 | 作用 | 是否必填 |
 |---|---|---|
-| `ZHIPU_API_KEY` | 智谱 GLM 的 API Key，`qa.py:358` 读取 | 问答必填；`test_eval` 中 2 个真实 API 用例必填。四个评估脚本本身不调 GLM（见「跑评估」），无 Key 也能跑 |
+| `ZHIPU_API_KEY` | 智谱 GLM 的 API Key，`qa.py:368` 读取 | 问答必填；`test_eval` 中 2 个真实 API 用例必填。四个评估脚本本身不调 GLM（见「跑评估」），无 Key 也能跑 |
 | `MODELSCOPE_ENVIRONMENT` | 非空即视为魔搭云端，`app.py:320-322` 改为监听 `0.0.0.0:7860` | 云端由平台设置，本地不设 |
 | `HF_HUB_OFFLINE` / `TRANSFORMERS_OFFLINE` | 强制离线加载本地模型；代码在 `ingest.py:21-22`、`index_store.py:16-17`、`rerank.py:25-26` 内置为 `1` | 不需手动设置 |
 
@@ -426,9 +426,9 @@ python evaluate_hybrid.py
 
 ### token 用量
 
-流式下 usage 在**最后一个 chunk** 里。`qa._supports_stream_options()`（`qa.py:488`）用 `inspect.signature` 探测当前 SDK 的 `create()` 是否接受 `stream_options`，本机实测**返回 False**（zhipuai 2.1.5.20250825 的签名里没有该参数，直接传 kwarg 会抛 TypeError）；函数在请求路径内**每次调用**（`qa.py:559`），并未缓存。
+流式下 usage 在**最后一个 chunk** 里。`qa._supports_stream_options()`（`qa.py:498`）用 `inspect.signature` 探测当前 SDK 的 `create()` 是否接受 `stream_options`，本机实测**返回 False**（zhipuai 2.1.5.20250825 的签名里没有该参数，直接传 kwarg 会抛 TypeError）；函数在请求路径内**每次调用**（`qa.py:569`），并未缓存。
 
-注意：`qa.py:492` 的 docstring 结论是**对的**——「不接受该参数、直接传会抛 TypeError」与实测一致。真正的不准确处是同一段 docstring 里的「改为模块加载时探测一次」，与实际"每次请求调用、无缓存"不符。另需说明：**参数不被接受 ≠ 拿不到 token**——SDK 在流式最后一个 chunk 默认带 usage，故 `logs/app.log`（2026-11-18）7 条完整请求都有 token 数。
+注意：`qa.py:499-505` 的 docstring 结论是**对的**——「不接受该参数、直接传会抛 TypeError」与实测一致。真正的不准确处是同一段 docstring 里的「改为模块加载时探测一次」，与实际"每次请求调用、无缓存"不符。另需说明：**参数不被接受 ≠ 拿不到 token**——SDK 在流式最后一个 chunk 默认带 usage，故 `logs/app.log`（2026-11-18）7 条完整请求都有 token 数。
 
 ### 实测样本
 
@@ -715,7 +715,7 @@ T4 粗排 Recall@5 = 0.75，精排 Recall@4 = 0.50：4 道 T4 题里，粗排命
 
 ### 阶段 3：流式输出
 
-- **`answer_stream()`**：`qa.py` 新增流式入口，阶段 3 时 yield `token` / `citations` / `refused` 三种事件；阶段 4 增加 `degraded` 后共四种（`qa.py:611-624`）。`answer()` 改为消费它，签名与 `RagAnswer` 结构不变。
+- **`answer_stream()`**：`qa.py` 新增流式入口，阶段 3 时 yield `token` / `citations` / `refused` 三种事件；阶段 4 增加 `degraded` 后共四种（协议见 `qa.py:629-632`）。`answer()` 改为消费它，签名与 `RagAnswer` 结构不变。
 - **引用不流式**：引用依赖完整答案里的 `[n]` 标记，流结束后一次性给。
 - **首 token 前可重试，已出 token 后不重试**：流式输出不可撤回，中途重试会重复输出；限流通常发生在请求发起时，首 token 前重试覆盖大部分场景。
 - **占位提示**：点发送立即 yield "正在检索并重排…"，缓解重排阶段的空白等待（纯 CPU 推理，单请求十几秒量级，随机器性能浮动）。
