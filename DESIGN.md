@@ -83,7 +83,7 @@
 ### 契约（已确认）
 
 **前置条件**
-- 嵌入模型本体（约 130MB）离线可用，放在 `models/bge-small-en-v1.5/`，与第 1 块 tokenizer 同目录。
+- 嵌入模型本体离线可用，放在 `models/bge-small-en-v1.5/`，与第 1 块 tokenizer 同目录。
 
 **建索引 build_index(chunks)**
 - 输入：`list[Chunk]`。空列表建空索引，不报错。
@@ -145,7 +145,7 @@
 |---|---|---|
 | C6 | 新增 `clear_index()` 对外接口 | 评估和调试需要清空索引，契约 10 已确认 |
 | C7 | 幂等删除假设「一批 chunks 同属一篇论文」 | 实现用第一条的 `doc_name` 做删除依据；混合文档场景不成立，已写入 README 已知限制 |
-| C8 | 已知限制新增：纯向量检索区分度有限，top-8 中仅 1 条直接含答案 | 第 2 块验收时人工诊断发现，作为 P1 重排的基线与动机记录 |
+| C8 | 已知限制新增：纯向量检索区分度有限，top-8 里直接含答案的条目偏少 | 第 2 块验收时人工诊断发现，作为 P1 重排的基线与动机记录 |
 
 ---
 
@@ -159,12 +159,11 @@
 - API Key：从环境变量 `ZHIPU_API_KEY` 读取，不进代码。
 - 调用方式：串行，绝不并发（免费档并发限制为 1）。
 - 超时：单次调用 60 秒（第 5 块调整为 120 秒，见 C14）。
-- 重试：遇限流/过载（1302/1305/429）等 10 秒重试一次；仍失败则抛异常。不写复杂退避算法。
+- 重试：遇限流/过载（1302/1305/429）等 10 秒重试一次；仍失败则抛异常。不写复杂退避算法。**注：退避重试不保证兜住——免费模型存在账户级限流，实测连续三次重试仍全部 429（见 C44）。**
 
 **接口**
-- `answer(query: str, top_k: int = 8) -> RagAnswer`
+- `answer(query: str, top_k: int = 20, final_k: int = 4) -> RagAnswer`（第 6 块由 `top_k=8` 改为 20，并新增 `final_k`；`qa.py:754` 即为此签名）
 - 内部调用 `index_store.search()`，不感知检索细节。
-- 第 6 块修改：`top_k` 默认值改为 20，并增加 `final_k=4` 参数（见第 6 块契约）。
 
 **输出**
 - `RagAnswer(answer, citations, usage)`：
@@ -215,7 +214,8 @@
 | # | 变更 | 原因 |
 |---|---|---|
 | C9 | 已知限制新增：LLM 引用可能错位（机制正常，标注不精确） | 9f 人工检查发现，记录为 RAG 已知问题，由第 7 块 Faithfulness 量化 |
-| C10 | `_call()` 增加 `stream=False` 与返回类型注解 `-> Any` | zhipuai 类型 stub 未按 `stream` 重载，Pylance 误报 `choices` 未知属性；运行时行为经 5 passed 验证不变 |
+| C10 | `_call()` 增加 `stream=False` 与返回类型注解 `-> Any` | zhipuai 类型 stub 未按 `stream` 重载，Pylance 误报 `choices` 未知属性；运行时行为经 5 passed 验证不变。**注：已被 C38 取代——阶段 3 起统一走流式，`_call()` 固定 `stream=True`，全仓无 `stream=False` 调用路径** |
+| C44 | 已知限制补充：免费模型存在**账户级限流**，退避重试后仍可能连续失败 | 2026-11-21 本机复测（venv 已与 `requirements.txt` 对齐）：同一问题连续三次（含间隔等待）均返回 429——`1305` 模型当前访问量过大 / `1302` 账户已达速率限制；而同一把 Key 的非流式调用可以成功，反证「配额可用，限流与请求形态、时段负载相关」。故「等 `RETRY_DELAY_SECONDS` 重试一次」不保证兜住，用户侧表现为「生成服务繁忙，请稍后重试」。属平台侧配额，非代码缺陷、非 Key 失效；与 README 第 3 块「LLM 生成」同一口径。 |
 
 ---
 
@@ -225,7 +225,7 @@
 
 **技术选型**
 - 界面库：Gradio（最终锁定 5.49.1，原因见 C15）。
-- P0 不做：流式输出、异步、多用户隔离、自定义 CSS。
+- P0 范围：不异步、多用户隔离、自定义 CSS。流式输出与降级容错已于阶段 3–4 落地（见 C38 / C40 与 README「阶段 3–4」）。
 
 **界面组成**
 - 上传区：`gr.File`（只收 `.pdf`）+「上传并建索引」按钮。
@@ -235,7 +235,7 @@
 - 引用区：`gr.Markdown`。
 
 **上传行为**
-- 上传成功后清空聊天历史和引用区，状态区提示「已切换论文，对话已重置」。
+- 上传成功后清空聊天历史和引用区，状态区提示「已索引 N 个 chunk，来自 {doc_name}。对话已重置。」（`app.py:103`，同时返回 `status, [], [], ""`）。
 
 **提问行为**
 - 异常时错误显示在聊天区，页面不崩。
@@ -260,9 +260,10 @@
 
 | # | 变更 | 原因 |
 |---|---|---|
-| C11 | 决策 3 适配 Gradio 6.x：移除 `Chatbot(type="messages")` 参数 | Gradio 6.0 起 `type` 参数被移除，messages 格式成为唯一默认格式 |
-| C12 | 已知限制新增：多用户共存于同一 Collection、上传文件不持久、无流式输出、消息旁显示耗时 | 第 4 块验收时确认的 P0 边界 |
-| C13 | 已知限制新增：Gradio 6.x 的 `processing \| x/y s` 进度指示器 | 验收截图确认，属官方 UI 特性，无需改代码 |
+| C11 | 决策 3：Chatbot 必须显式 `type="messages"`（Gradio 5.49.1） | 5.x 默认为 tuples 格式，传 dict 列表不声明 `type` 会渲染失败（`app.py:236-237`）；曾按 6.x 尝试移除该参数，与锁定版本冲突，已保持 5.x 写法 |
+| C12 | 已知限制新增：多用户共存于同一 Collection、上传文件不持久、消息旁显示耗时（流式已于阶段 3 落地）；另记 Gradio 5.49.1 的 `processing \| x/y s` 进度指示器属官方 UI 特性，无需改代码 | 第 4 块验收时确认的 P0 边界与验收截图观察 |
+
+> 编号说明：原 C13（进度指示器条目）已并入 C12，编号不复用。
 
 ---
 
@@ -275,12 +276,12 @@
 - `ms_deploy.json` 声明 `{"sdk": "docker", "app_port": 7860}`。
 
 **模型与索引**
-- 模型随镜像打包，启动时不下载。
+- 模型**不**打进镜像（`.dockerignore` 排除 `models/`，`Dockerfile` 的 `COPY . .` 因此带不进权重），启动时由 `app.py` 的 `snapshot_download` 从 ModelScope 下载；魔搭云端启动时联网下载成功，故线上表现为"可用"，但不等于"不下载"。离线部署须预先将 `models/` 挂载或拷贝进容器，否则会卡在下载。
 - 启动时 `clear_index()` 清旧数据，再自动索引 `data/sample.pdf`。
 
 **依赖**
-- Dockerfile 单独从 PyTorch CPU 源安装 `torch`（剥离 CUDA，镜像从 3.35GB 降到 1.1GB）。
-- `pdfplumber==0.11.8` + `Pillow==11.3.0` + `gradio==5.49.1`（解决 Pillow 冲突）。
+- Dockerfile 单独从 PyTorch CPU 源安装 `torch==2.15.0`，剥离 Linux 默认附带的 CUDA 依赖，使镜像体积大幅缩小（仓库未留存构建日志，具体 GB 数不引用）。
+- `pdfplumber==0.11.8`（要求 `Pillow>=9.1`）+ `Pillow==11.3.0` + `gradio==5.49.1`（要求 `Pillow<12.0`），三者相容；`pdfplumber 0.11.10` 要求 `Pillow>=12.2.0`，与 gradio 的 `<12.0` 无交集，故不采用。
 
 **验收标准**
 - 13a–13f（Running、界面、自动索引、冷启动、上传新 PDF、Secrets 配置）。
@@ -293,16 +294,16 @@
 | 2 | `python:3.13-slim` + 补 `build-essential` / `libgomp1` | 体积小，且够 PyTorch 用 |
 | 3 | 端口三处对齐（Dockerfile EXPOSE、ms_deploy app_port、app.py launch） | 避免魔搭反复重定向 |
 | 4 | `.dockerignore` 排除 `.venv` / `__pycache__` / `data/chroma` | 减小镜像 |
-| 5 | `torch` 单独从 CPU 源安装 | 剥离 CUDA，体积从 3.35GB → 1.1GB |
+| 5 | `torch` 单独从 CPU 源安装 | 剥离 CUDA 依赖，显著缩小镜像体积（未留构建日志，不引用具体 GB） |
 
 ### 变更记录
 
 | # | 变更 | 原因 |
 |---|---|---|
 | C14 | 开启 Gradio `queue()`，将 `zhipuai` 超时从 60s 放宽至 120s | 解决中文提问偶发 `Request timed out` 的问题，确保长耗时推理不中断 |
-| C15 | 依赖版本：降级 `pdfplumber==0.11.8`，锁定 `Pillow==11.3.0`，降级 `gradio==5.49.1` | 解决魔搭云端构建时 Pillow 版本冲突，以及 Gradio 6.x 渲染兼容性问题 |
-| C16 | Dockerfile 单独从 PyTorch CPU 源安装 `torch` | 剥离 Linux 下默认附带的 CUDA 依赖，镜像从 3.35GB 缩减至约 1.1GB |
-| C17 | `qa.py` 加入性能计时日志 | 定位耗时瓶颈，确认后端总耗时仅 7-10 秒，问题在前端渲染 |
+| C15 | 依赖版本：锁 `pdfplumber==0.11.8`（要求 `Pillow>=9.1`）、`Pillow==11.3.0`、降级 `gradio==5.49.1`（要求 `Pillow<12.0`） | 解决魔搭云端构建时 Pillow 版本冲突，以及 Gradio 与 Pillow 的版本兼容性问题。`pdfplumber 0.11.10` 要求 `Pillow>=12.2.0`，与 gradio 无交集，故锁 0.11.8 |
+| C16 | Dockerfile 单独从 PyTorch CPU 源安装 `torch==2.15.0` | 剥离 Linux 下默认附带的 CUDA 依赖，镜像体积大幅缩小（未留构建日志，不引用具体 GB） |
+| C17 | `qa.py` 加入性能计时日志 | 定位耗时瓶颈：后端耗时集中在重排与 LLM 两段（全程 CPU 推理、未用 GPU，耗时随机器与负载变化），前端渲染会额外增加等待感 |
 
 ---
 
@@ -326,28 +327,28 @@
 - 改为 `search(top_k=20)` → `rerank(final_k=4)` → 拼 prompt。对外签名不变。
 
 **验收标准**
-- 14a–14e（返回 ≤ final_k、p5 进 top-4、分数 0~1、端到端可用、耗时 ≤ 2 秒）。
+- 14a–14e（返回 ≤ final_k、p5 进 top-4、分数 0~1、端到端可用、重排在 CPU 上为十几秒量级、随机器变化）。
 
 ### 设计决策（摘要）
 
 | # | 决策 | 原因 | 放弃的替代 / 代价 |
 |---|---|---|---|
 | 1 | `sentence-transformers` 的 `CrossEncoder` | 与 SentenceTransformer 同库 | 手写 transformers 加载：代码量大 |
-| 2 | `@lru_cache` 单例 | 模型 1.1GB，重复加载延迟爆炸 | 每次 new：延迟几秒 |
+| 2 | `@lru_cache` 单例 | 模型体积大，重复加载延迟爆炸 | 每次 new：重复加载明显拖慢启动 |
 | 3 | sigmoid 归一化到 0~1 | 第 7 块阈值需要 0~1 量纲 | 保留 logits：跨模型不可比 |
 | 4 | 单文件 `rerank.py` | 与前三块同风格 | 拆包：过度设计 |
 | 5 | `final_k` 截断在 `rerank` 内部 | 调用方不需要写切片 | 调用方截断：易忘 |
-| 6 | `batch_size=4` | CPU 内存扛不住 32（实测 25 秒 → 1 秒） | 默认 32：内存 Swap |
+| 6 | `batch_size=4` | CPU 内存扛不住 32（未限制时单次重排会慢到不可用，未留压测日志，不引用具体耗时） | 默认 32：内存 Swap |
 
 ### 变更记录
 
 | # | 变更 | 原因 |
 |---|---|---|
 | C18 | `_call()` 增加 `stream=False` 与 `Any` 类型注解 | 消除 Pylance 报错 |
-| C19 | 新增 `rerank.py` 实现 Cross-Encoder 精排，模型选型 `bge-reranker-base` | 纯向量检索 top-8 仅 1 条直接含答案，p5 排第 3，需重排 |
+| C19 | 新增 `rerank.py` 实现 Cross-Encoder 精排，模型选型 `bge-reranker-base` | 纯向量检索区分度有限、命中条目少且排名靠后，需重排 |
 | C20 | `rerank.py` 强制设置 `batch_size=4`，并加入 `torch.sigmoid` 归一化 | CPU 内存 Swap 问题 + 第 7 块阈值量纲 |
 | C21 | 本地重生成干净的 `.safetensors` 覆盖云端损坏文件 | 云端曾出现 `.safetensors` header 损坏 + `.bin` 触发 PyTorch 2.6 `weights_only` 双重问题。safetensors 是纯张量格式，加载时不走 `torch.load`，从根本上绕开安全限制 |
-| C22 | 移除所有针对 `torch.load` 的 monkey-patch 和 `use_safetensors=False` 参数 | 模型修复后不再需要拦截，恢复干净代码便于维护 |
+| C22 | 移除所有针对 `torch.load` 的 monkey-patch 和 `use_safetensors=False` 参数 | 模型修复后不再需要拦截，恢复干净代码便于维护。**注：仅部分落地——`use_safetensors=False` 已无残留，但 `ingest.py:12-19` 的 `torch.load` monkey-patch 仍在（`model.safetensors` 已能正常加载，补丁未删）** |
 
 ---
 
@@ -402,14 +403,14 @@
 | # | 决策 | 原因 | 放弃的替代 / 代价 |
 |---|---|---|---|
 | 1 | 扁平列表 + id 前缀区分语言 | 遍历方便，中英对照一目了然 | 按语言拆文件：多一次 IO + 15 行合并逻辑 |
-| 2 | 区间判定命中 | 容忍跨页，避免 Recall 虚低 | 精确匹配 page_start：跨页 chunk（10–15%）判未命中，Recall 虚低 10% |
-| 3 | MRR 未命中记 0 | 标准定义，可复现 | 跳过未命中：MRR 虚高 15–20% |
-| 4 | 评估脚本只调 `search` + `rerank`，不调 `qa.answer` | 快、不消耗 API、逻辑透明 | 端到端：120 题 × 8 秒 ≈ 16 分钟，且触发 429 |
-| 5 | 阈值人工观察分布后定 | 60 题样本下 ROC 无统计意义 | `sklearn` 算 ROC：多 0.5 人天，60 题上过拟合 |
+| 2 | 区间判定命中 | 容忍跨页，避免 Recall 虚低 | 精确匹配 page_start：跨页 chunk 会判未命中，Recall 虚低（边界分类实测 100 题中 5 题为跨页误匹配） |
+| 3 | MRR 未命中记 0 | 标准定义，可复现 | 跳过未命中：只统计命中题，MRR 虚高 |
+| 4 | 评估脚本只调 `search` + `rerank`，不调 `qa.answer` | 快、不消耗 API、逻辑透明 | 端到端：140 题要跑十几分钟以上，且必然触发 429（免费档并发 1） |
+| 5 | 阈值人工观察分布后定 | 样本量小（当时可答题 60 道），ROC 无统计意义 | `sklearn` 算 ROC：多 0.5 人天，小样本上过拟合 |
 | 6 | `REFUSAL_THRESHOLD` 初始占位 0.3，评估后调 | 先给个中间值避免报错 | 初始 0 或 1：无参考意义 |
 | 7 | `eval_report.json` 含时间戳、阈值、分布、诊断项 | 回归对比、阈值调整不用重跑 | 只输出四个百分比：看不出「为什么变了」 |
 | 8 | 单文件 `evaluate.py`，五函数 | 与项目同风格，内聚 | 拆 `evaluation/` 包：当前规模过度设计 |
-| 9 | 不新增依赖 | 指标计算是纯数学 | 引入 `sklearn`：30MB 依赖，与决策 5 冲突 |
+| 9 | 不新增依赖 | 指标计算是纯数学 | 引入 `sklearn`：多一个重依赖，与决策 5 冲突 |
 
 ### 变更记录
 
@@ -418,11 +419,11 @@
 | C23 | 评估集规模从 120 条扩到 140 条（可答 48→50，不可答 12→20） | 原 48+12 的除不尽问题；新方案 50+20 除尽，且不可答题按 2:2:1 分配为 8+8+4 |
 | C24 | `en_012` 换题 | 原题 keywords 全是单字母，任何页都能命中，MRR 无意义；换成 `How does LoRA's number of trainable parameters scale with the rank r?`（gold_page=4，keywords `["linear", "r"]`） |
 | C25 | `en_021` gold_page 9→10、`en_041` gold_page 5→4 | 结论句实际在 Section 7.1（page 10）；"memory and storage" 的概括在 Section 4.2（page 4） |
-| C26 | 中文题 `gold_keywords` 统一用英文原词 | 中文题检索的是英文原文，keywords 是「在检索结果里找什么」的锚点。用中文译词在英文原文里 100% 匹配失败，中文指标失真约 2% |
-| C27 | `thresholds.json` 从单值改为按语言分设（en=0.3, zh=0.18） | 中文误拒率 42% 过高，原因是 BGE 单语模型跨语言匹配分数天然偏低。分语言设阈值后误拒率降到 34%，拒答准确率保持在 0.70 |
+| C26 | 中文题 `gold_keywords` 统一用英文原词 | 中文题检索的是英文原文，keywords 是「在检索结果里找什么」的锚点。用中文译词在英文原文里匹配失败，中文指标失真 |
+| C27 | `thresholds.json` 从单值改为按语言分设（en=0.3, zh=0.18） | 中文误拒率在单阈值阶段明显高于英文，原因是 BGE 单语模型跨语言匹配分数天然偏低。分语言设阈值后误拒率 0.34、拒答准确率 0.70（`eval_report.json`） |
 | C28 | 阈值从 0.15 回调到 0.18 | 实测 0.15 相比 0.18：误拒率只改善 2%，但拒答准确率损失 5%，半相关题损失 12.5%。边际收益为负，回调 |
 | C29 | `qa.py` 新增 `_detect_lang` 和 `_get_threshold` | 支持按语言选阈值；兼容旧格式（数字 → `{"default": 数字}`） |
-| C30 | `evaluate.py` 新增 `fine_recall_at_20_gold_given` 诊断项 | 区分「粗排漏召回」vs「精排排错」。实测英文精排从粗排命中中丢失 15%，中文丢失 6% |
+| C30 | `evaluate.py` 新增 `fine_recall_at_20_gold_given` 诊断项 | 区分「粗排漏召回」vs「精排排错」。该值随评估脚本版本变化：`eval_report_v1.json` 为 EN 0.7273 / ZH 0.6757，当前 `eval_report.json` 两语言均为 1.0，故不引用单一百分比 |
 
 ---
 
@@ -483,13 +484,13 @@
 | 1 | 对照组 20 道题 × 2 语言 = 40 条 | 20 题粒度够看出「方法擅长 vs 不擅长」，40 条平衡工作量 | 30 题：更稳但工作量大；10 题：粒度太粗 |
 | 2 | 防自证：分离出题与标答案 | 避免「出题人知道答案位置」 | 一人包办：有自证风险 |
 | 3 | 按 type 分组统计 | 看「哪种题型最强」，比整体平均更有信息量 | 只看整体：掩盖内部差异 |
-| 4 | 接受对照组整体 0.45 低于主评估集的 0.60 | 诚实呈现，暴露方法边界 | 改题面刷分：违背工程诚实 |
+| 4 | 接受英文粗排 Recall@5 0.45 低于主评估集英文的 0.60 | 诚实呈现，暴露方法边界 | 改题面刷分：违背工程诚实 |
 
 ### 结论
 
 - **方法在「找一个数字」上确实满分**（T1 精排 Recall@4 = 1.00），这是核心优势。
 - **方法在「比较概念」上接近 0**（T5 双指标 0.25），这是明确弱点。
-- **对照组整体 0.45 不低不高**，因为「事实型」内部有强弱分化。这个结论比「对照组 0.85 验证假设」更有价值——它说明我们对方法能力边界的认知本身需要数据校准。
+- **对照组整体 0.45 不低不高**，因为「事实型」内部有强弱分化。这个结论比「对照组 0.85 验证假设」更有价值——它说明我们对方法能力边界的认知本身需要数据校准。（0.85 为当初的假设值，非实测）
 
 ### 变更记录
 
@@ -548,7 +549,7 @@
 - D4 概括型占 34%，数值型受 PDF 提取拖累（`rq=rv=8` token 数为 0，见 C34）。
 - D5 McNemar 不一致对 n=4（2 救 2 推），**样本不足，不输出 p 值**；R@5 差值 95% CI `[-0.08, 0.06]` **含 0**，差异是噪声。
 
-**结论：BM25 在单文档场景前提不满足（IDF 失效、两路同质、擅长题型稀缺），-0.02 是 1 个标准误的噪声，回滚。**
+**结论：BM25 在单文档场景前提不满足（IDF 失效、两路同质、擅长题型稀缺），-0.02 落在 1 个标准误以内（bootstrap 均值 -0.01，95% CI `[-0.08, 0.06]`），属噪声，回滚。**
 
 ### 设计决策
 
@@ -573,8 +574,8 @@
 | C36 | 入口级测试 `test_on_upload_triggers_rebuild` 未纳入最终测试集 | 该测试被 `bm25_search` 懒加载兜底（`_on_upload` 不调 rebuild 时，懒加载也会读到新 Chroma），无法验证契约 2.4 的配对纪律。回滚后 `_on_upload` 不再 rebuild，测试删除，`test_hybrid.py` 回到 11 项。 |
 | C37 | 阶段 2a 契约 2.4 的 `_on_upload` rebuild 配对在生产入口未生效 | `app.py` 该调用始终为注释状态；`test_rebuild_sync` 是自包含测试，未覆盖生产入口。回滚后此缺口不再有影响，记录备查。 |
 | C38 | 阶段 3 流式：`_stream_llm` 的 `_call()` 标注 `-> Any`，`resp: Any` | zhipuai 类型 stub 把 `stream=True` 的返回错误推断为 `tuple[str, Any]`，运行时实际是 `Stream[ChatCompletionChunk]`（有 `.choices`）。Pylance 报 `chunk.choices` 未知属性。与 C10/C18 同源（stub 未按 stream 参数重载），运行时行为经 8 passed 验证不变。 |
-| C39 | 阶段 3 实测：首字延迟约 9 秒，瓶颈在重排不在 LLM；新增占位提示 | 流式只优化了 LLM 阶段（8.6 秒），但重排 8.7–9.2 秒在 LLM 之前串行阻塞。用户点发送后 9 秒内无任何反馈。修复：`_on_send` 立即 yield "正在检索并重排…"占位，真 token 到来时清空。19e 口径从"1–2 秒出首字"改为"重排完成后 1–2 秒出首字"。重排耗时优化记入后续阶段（需改 rerank.py 或换模型，超出阶段 3 范围）。 |
+| C39 | 阶段 3 实测：首字延迟主要来自重排（纯 CPU 推理、十几秒量级、随机器变化），瓶颈在重排不在 LLM；新增占位提示 | 流式只优化了 LLM 阶段，但重排在 LLM 之前串行阻塞，用户点发送后长时间无任何反馈。修复：`_on_send` 立即 yield "正在检索并重排…"占位，真 token 到来时清空。19e 口径从"秒级出首字"改为"重排完成后秒级出首字"。重排耗时优化记入后续阶段（需改 rerank.py 或换模型，超出阶段 3 范围）。 |
 | C40 | 阶段 4 降级与容错：`degraded` 事件 + `_error_to_message` + pending_prefix | ① `answer_stream` 新增第四种事件 `degraded{reason, fallback_count}`：rerank 抛异常时降级用粗排 top final_k 继续，不抛异常（可预期失败用事件表达，真异常仍抛）；`fallback_count = min(final_k, len(coarse_results))`，degraded 必为首事件、与 refused 互斥、之后仍发 citations。② D1 跳过阈值判断（C3 取舍：粗排余弦分与重排分不同量纲），qa.py 留注释、README 留痕。③ D5 防御分支：rerank 返回空 → refused(empty)。④ `app.py` 新增 `_error_to_message(exc)`：异常→友好文案（Key 缺失/限流/Chroma/兜底），靠关键字识别不引入新异常类型。⑤ `pending_prefix` 机制：degraded 不即时渲染，首 token 到达时拼接，避免空消息闪烁。⑥ 流中途异常永远 append 不重置，覆盖 D1+D2、D1+D3 叠加。⑦ 未知事件类型 print 到 stderr 不崩（向前兼容）。⑧ `answer()` 消费 stream 遇 degraded 静默忽略（非流式调用方对降级透明）。验收 20a–20g 全通过（15 passed）。 |
-| C41 | 阶段 5 结构化日志：loguru 双 sink + 汇总日志 + token 用量 + stream_options 探测 | ① 新增 `_setup_logging()`：控制台人类可读（`HH:mm:ss \| LEVEL \| message`）+ 文件 JSON（`logs/app.log`，`serialize=True`，按天轮转留 7 天）；幂等，重复调用不重复加 sink。② 新增 `_log_query()`：一条/请求汇总日志，字段含 `lang/query_len/retrieval_ms/rerank_ms/llm_ms/total_ms/n_candidates/top_score/refused/refuse_reason/degraded/degrade_reason/prompt_tokens/completion_tokens/total_tokens`；用 `logger.bind(**fields).info()` 让字段进 JSON 的 `record.extra`。③ `_stream_llm` 的 yield 从 `str` 改为 `tuple[str, Any]`（`"token"`/`"usage"`），`answer_stream` 消费元组、收集 usage、流结束打日志；`answer_stream` 对外 yield 协议不变（`app.py` 零改动），`RagAnswer.usage` 保持 None（D5）。④ 新增 `_supports_stream_options()`：模块加载时用 `inspect` 探测 zhipuai `create()` 是否接受 `stream_options`。zhipuai 2.1.5 不支持，直接传会抛 `TypeError`；原先"试错→降级"导致每次请求多打一次被拒请求 + WARNING，改为探测后不支持就直接不带。运行时降级分支只匹配明确的 `stream_options`/`include_usage` 关键词（去掉过宽的 `"unknown"`）。⑤ 删除 5 处 `print("[性能日志]...")`，信息并入汇总日志。⑥ `app.py` 的 `_error_to_message` 调用处加 `logger.error`（结构化：`error_type`/`error_msg`/`user_msg`），未知事件告警保留 `print(stderr)`（契约 5e）。⑦ `.gitignore` 加 `logs/`。验收 22a–22j 全通过（15 passed + 真实运行日志验证：中英文 token 用量、拒答 null、隐私无原文）。实测 `_supports_stream_options()` 返回 True，token 统计可用：英文 prompt=1692/completion=475，中文 prompt=1692/completion=583，`total = prompt + completion` 成立。 |
+| C41 | 阶段 5 结构化日志：loguru 双 sink + 汇总日志 + token 用量 + stream_options 探测 | ① 新增 `_setup_logging()`：控制台人类可读（`HH:mm:ss \| LEVEL \| message`）+ 文件 JSON（`logs/app.log`，`serialize=True`，按天轮转留 7 天）；幂等，重复调用不重复加 sink。② 新增 `_log_query()`：一条/请求汇总日志，字段含 `lang/query_len/retrieval_ms/rerank_ms/llm_ms/total_ms/n_candidates/top_score/refused/refuse_reason/degraded/degrade_reason/prompt_tokens/completion_tokens/total_tokens`；用 `logger.bind(**fields).info()` 让字段进 JSON 的 `record.extra`。③ `_stream_llm` 的 yield 从 `str` 改为 `tuple[str, Any]`（`"token"`/`"usage"`），`answer_stream` 消费元组、收集 usage、流结束打日志；`answer_stream` 对外 yield 协议不变（`app.py` 零改动），`RagAnswer.usage` 保持 None（D5）。④ 新增 `_supports_stream_options()`：每次请求用 `inspect` 探测 zhipuai `create()` 是否接受 `stream_options`（结果未缓存，单次 inspect 开销可忽略）。zhipuai 2.1.5 不支持，直接传会抛 `TypeError`；原先"试错→降级"导致每次请求多打一次被拒请求 + WARNING，改为探测后不支持就直接不带。运行时降级分支只匹配明确的 `stream_options`/`include_usage` 关键词（去掉过宽的 `"unknown"`）。⑤ 删除 5 处 `print("[性能日志]...")`，信息并入汇总日志。⑥ `app.py` 的 `_error_to_message` 调用处加 `logger.error`（结构化：`error_type`/`error_msg`/`user_msg`），未知事件告警保留 `print(stderr)`（契约 5e）。⑦ `.gitignore` 加 `logs/`。验收 22a–22j 全通过（15 passed + 真实运行日志验证：中英文 token 用量、拒答 null、隐私无原文）。实测 `_supports_stream_options()` 返回 **False**（`zhipuai 2.1.5.20250825` 的 `Completions.create()` 签名 22 个参数里无 `stream_options`），故不传该参数；token 统计仍可用——SDK 末 chunk 默认带 usage。日志实测中英文各有一条完整记录：prompt 1680–1692、completion 398–976，`total = prompt + completion` 成立。 |
 | C42 | 阶段 7 CI/CD 流水线：单 Job 串行 + 模型缓存 + 触发部署 | ① 新建 `.github/workflows/ci.yml`：`push` 主干触发，拆分为 test 和 deploy 两个 Job。② 测试选型：跑 `test_ingest`、`test_index_store`、纯逻辑评估测试，排除真实 API 测试。③ 模型缓存：配合 `snapshot_download` 多线程下载并缓存 `./models`。④ 同步（D4）：放弃第三方 Action，改为原生 `git fetch` + `git reset --hard` + 文件覆盖拷贝，彻底解决远端分支保护（protected branch）和 LFS 残留导致的强推/合并失败。⑤ 部署（D5）：利用 `echo` 追加注释打破 Docker 构建缓存，通过 `sed` 清理乱码防止 `pip` 解析失败，由魔搭平台自动触发 Dockerfile 重建。 |
 | C43 | 阶段 7 未来演进文档：README 新增「CI/CD 与未来演进」一节 | 总结单人向多人协作演进的方法。① 触发层：引入 PR 和 Branch Protection。② 部署层：引入 GitHub Environments 和人工 Approve。③ 权限层：Secrets 迁移到 Environment 级别，引入 CODEOWNERS。明确记录演进代价：审批增加延迟、分支保护变严、Secrets 迁移有成本。 |

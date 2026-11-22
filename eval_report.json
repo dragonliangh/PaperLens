@@ -1,17 +1,23 @@
 {
-  "timestamp": "2026-11-07T00:42:43.606763",
+  "timestamp": "2026-11-15T23:48:50.121841",
   "thresholds_used": {
     "default": 0.3,
     "en": 0.3,
-    "zh": 0.15
+    "zh": 0.18
   },
   "en": {
     "answerable_count": 50,
     "unanswerable_count": 20,
+    "coarse_recall_at_4": 0.54,
     "coarse_recall_at_5": 0.6,
+    "coarse_mrr_at_4": 0.345,
+    "coarse_mrr_at_5": 0.357,
     "coarse_mrr_at_20": 0.3859,
     "fine_recall_at_4": 0.64,
+    "fine_recall_at_5": 0.64,
     "fine_mrr_at_4": 0.4283,
+    "fine_mrr_at_5": 0.4283,
+    "fine_mrr_at_20": 0.4519,
     "refusal_accuracy": 0.6,
     "refusal_accuracy_by_category": {
       "unrelated": 0.75,
@@ -20,7 +26,7 @@
     },
     "diagnostics": {
       "coarse_recall_at_20": 0.88,
-      "fine_recall_at_20_gold_given": 0.7273,
+      "fine_recall_at_20_gold_given": 1.0,
       "false_reject_rate": 0.18,
       "n_fine_scored": 50,
       "coarse_rank_histogram": {
@@ -43,20 +49,26 @@
   "zh": {
     "answerable_count": 50,
     "unanswerable_count": 20,
+    "coarse_recall_at_4": 0.22,
     "coarse_recall_at_5": 0.24,
+    "coarse_mrr_at_4": 0.1233,
+    "coarse_mrr_at_5": 0.1273,
     "coarse_mrr_at_20": 0.1796,
     "fine_recall_at_4": 0.5,
+    "fine_recall_at_5": 0.52,
     "fine_mrr_at_4": 0.3983,
-    "refusal_accuracy": 0.65,
+    "fine_mrr_at_5": 0.4023,
+    "fine_mrr_at_20": 0.4312,
+    "refusal_accuracy": 0.7,
     "refusal_accuracy_by_category": {
       "unrelated": 1.0,
-      "semi_related": 0.375,
+      "semi_related": 0.5,
       "counterfactual": 0.5
     },
     "diagnostics": {
       "coarse_recall_at_20": 0.74,
-      "fine_recall_at_20_gold_given": 0.6757,
-      "false_reject_rate": 0.32,
+      "fine_recall_at_20_gold_given": 1.0,
+      "false_reject_rate": 0.34,
       "n_fine_scored": 50,
       "coarse_rank_histogram": {
         "8": 5,

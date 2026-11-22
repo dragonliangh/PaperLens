@@ -1,3 +1,12 @@
+# PaperLens 依赖锁定
+# 环境：Python 3.13.0（Windows 10 / Linux python:3.13-slim 均适用）
+# 版本取值：除 pdfplumber 外均按本机 venv 实测版本锁定；pdfplumber 取可复现的 0.11.8（原因见下）
+# torch 不在此文件：必须从 PyTorch CPU 源单独安装，否则会拉入 CUDA 依赖
+#   安装命令：pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu
+# pytest 不在此文件：见 README「首次配置」第 4 步，安装 pytest==9.2.0
+# pdfplumber 锁 0.11.8 而非 0.11.10：0.11.10 要求 Pillow>=12.2.0，与 gradio 5.49.1 的 Pillow<12.0 无交集，
+#   两者不可能同时装上；0.11.8 只要求 Pillow>=9.1，与 Pillow==11.3.0 相容。
+
 pdfplumber==0.11.8
 Pillow==11.3.0
 transformers==5.22.1
@@ -6,6 +15,6 @@ chromadb==1.5.9
 zhipuai==2.1.5.20250825
 sniffio==1.3.1
 gradio==5.49.1
-rank_bm25
-loguru
-modelscope
+rank_bm25==0.2.2
+loguru==0.8.0
+modelscope==1.40.2
