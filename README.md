@@ -362,6 +362,7 @@ python evaluate_hybrid.py
 - **Gradio 版本**：锁定 `gradio 5.49.1` + `Pillow 11.3.0`（`pdfplumber 0.11.8` 要求 `Pillow>=9.1`，`gradio 5.49.1` 要求 `Pillow<12.0`，这是唯一相容组合）；聊天区必须显式声明 `type="messages"`。早期笔记曾把「聊天框不显示内容」归因为「Gradio 6.x 的 iframe 渲染问题」，该说法无实测支撑，已改为版本兼容性口径（见 `DESIGN.md` C15）。
 - **镜像体积**：Linux 下默认安装的 `torch` 会附带大量 CUDA 依赖，使镜像显著膨胀。解决办法是从 PyTorch CPU 源单独安装 `torch==2.15.0`，体积随之大幅缩小（仓库未留存构建日志，具体体积不再引用）。
 - **性能表现**：云端体验明显快于本机，但未留存云端日志，具体耗时不再引用；本机 `logs/app.log`（2026-11-18）显示检索在数十毫秒级、LLM 在数秒到十几秒级。本机全程 CPU 推理、未用 GPU，耗时随机器与负载变化。前端 Gradio 渲染可能额外增加等待感。
+- **平台构建耗时波动、失败原因要人工看**：「构建 + 部署」在本机观测为 6–16 分钟区间（云端队列与缓存命中情况不同），故 `deploy` Job 给 45 分钟上限、轮询窗口 30 分钟。超时或状态出现 `*Failed*` 时 CI 只报 `BUILD_FAILED`，具体失败阶段仍需到空间页「构建日志」查看——CI 内不拉日志（该端点需鉴权、且可能是长轮询，容易把 job 拖住）。
 
 ### 第 6 块：两阶段检索与云端修复
 
@@ -703,15 +704,18 @@ T4 粗排 Recall@5 = 0.75，精排 Recall@4 = 0.50：4 道 T4 题里，粗排命
 
 **云端构建实测（2026-11-14，云效 → 魔搭 ACR）**：`python:3.13-slim` 基础镜像 + `torch 2.15.0+cpu`（209.5 MB wheel）+ `requirements.txt` 全量安装成功（含 `pdfplumber-0.11.8` 与 `Pillow-11.3.0`），镜像推送完成；整个构建分钟级、全程 CPU。
 
+**2026-11-22 复测（GitHub Actions 推送到魔搭仓库 → 云效构建 → 自动部署）**：`Dockerfile` 的 pip 已改为「清华源优先、不可达时回退官方 PyPI」。构建日志里 `#10` 用 75.7 秒装完 `requirements.txt`（`Successfully installed ... Pillow-11.3.0 ...`），随后 `exporting layers` → `loading layer` → 镜像推送成功；同日自动部署链路验证通过（CI 轮询到 `Running`，且 `DeployedTime` 晚于本次 push 时间）。
+
 ### 单人阶段的设计
 
 - **触发条件**：`push` 到 `master` 分支。
 - **测试范围**：`test_ingest.py` + `test_index_store.py` + 纯逻辑测试。**不跑**需要真实 `ZHIPU_API_KEY` 的 API 测试。
-- **部署链路**：测试通过（`test` Job）→ 原生 `git fetch` 拉取并覆盖 → 打破 Docker 缓存 → `git push` 同步到魔搭创空间 → 触发平台自动构建。
+- **部署链路**：测试通过（`test` Job）→ 原生 `git fetch` 拉取并覆盖 → 打破 Docker 缓存 → `git push` 同步到魔搭创空间 → 触发平台自动构建 → **轮询空间状态直到上线**：用公开只读接口读 `Status` 与 `DeployedTime`，要求 `DeployedTime` 晚于本次 push 时间才判成功；出现 `*Failed*` 或 30 分钟内未上线则 CI 变红。
 - **设计考量**：
   1. 不跑真实 API 测试，避免免费档 429 随机变红导致无法部署。
   2. 用原生 Git 命令结合文件覆盖，绕开魔搭的保护分支（Protected Branch）和 LFS 残留限制。
   3. 修改 `requirements.txt` 强制打破镜像层缓存，确保每次构建使用的是最新代码。
+  4. 部署不再「推完就走」：`deploy` Job 末尾轮询空间状态，把「构建或启动失败」变成 CI 红灯。判据要求 `DeployedTime` 晚于本次 push 时间，避免旧实例仍在 `Running` 时被误判成新版本已上线。
 
 ### 演进原则
 
