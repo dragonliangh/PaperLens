@@ -122,33 +122,41 @@ jobs:
           # 6. 推送到魔搭
           git push modelscope master:master
 
-      - name: Verify ModelScope deploy (deploy API + status poll)
+      - name: Verify ModelScope build (deploy 尝试 + 状态轮询)
         if: always()
         env:
           MS_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
           MS_REPO: ${{ secrets.MODELSCOPE_REPO_ID }}
         run: |
           set +e
-          if [ -z "${MS_TOKEN}" ]; then echo "::error::MODELSCOPE_TOKEN 未配置"; exit 1; fi
-          API="https://modelscope.cn/openapi/v1/studios/${MS_REPO}"
+          API_OPEN="https://modelscope.cn/openapi/v1/studios/${MS_REPO}"
+          API_WEB="https://www.modelscope.cn/api/v1/studio/${MS_REPO}"
+          start_ts=$(date +%s)
+          echo "push_time=${start_ts}"
 
-          echo "== step1: POST ${API}/deploy（显式触发重建，状态任意均可调）=="
-          curl -sS -X POST -H "Authorization: Bearer ${MS_TOKEN}" -H "Content-Type: application/json" "${API}/deploy" | head -c 400
-          echo
+          # 1) 显式触发部署（带 token）；失败不阻断，因为 git push 本身也会触发构建
+          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 20 -X POST \
+                 -H "Authorization: Bearer ${MS_TOKEN}" -H "Content-Type: application/json" \
+                 "${API_OPEN}/deploy" 2>/dev/null)
+          echo "deploy_api_http=${code}（200/201 表示 token 有效且已显式触发；401 表示 token 失效，退回 push 触发这条路径）"
 
-          echo "== step2: 轮询状态（30s × 40 = 最多 20 分钟）=="
-          for i in $(seq 1 40); do
-            body=$(curl -sS -H "Authorization: Bearer ${MS_TOKEN}" "${API}")
-            st=$(printf '%s' "$body" | python3 -c "import sys,json;d=json.load(sys.stdin);print((d.get('Data') or {}).get('Status') or d.get('Status') or 'PARSE_ERR')" 2>/dev/null)
+          # 2) 轮询：不依赖 token，用公开只读接口；要求 DeployedTime 晚于 push_time 才算真构建成功
+          for i in $(seq 1 60); do
+            body=$(curl -sS --max-time 20 "${API_WEB}" 2>/dev/null)
+            st=$(printf '%s' "$body" | python3 -c "import sys,json;d=json.load(sys.stdin);print((d.get('Data') or {}).get('Status') or 'PARSE_ERR')" 2>/dev/null)
+            dt=$(printf '%s' "$body" | python3 -c "import sys,json;d=json.load(sys.stdin);print((d.get('Data') or {}).get('DeployedTime') or 0)" 2>/dev/null)
             if [ -z "$st" ]; then st="PARSE_ERR"; fi
-            echo "[$i] status=$st"
+            if [ -z "$dt" ]; then dt=0; fi
+            echo "[$i] status=$st deployed_time=$dt"
             case "$st" in
-              Running) echo "DEPLOY_OK"; exit 0 ;;
-              *Failed*) echo "DEPLOY_FAILED"; break ;;
+              *Failed*) echo "BUILD_FAILED（构建失败，需人工取构建日志）"; exit 1 ;;
+              Running)
+                if [ "$dt" -gt "$start_ts" ] 2>/dev/null; then
+                  echo "BUILD_OK deployed_time=$dt（晚于 push 时间，确认本次构建产物已上线）"; exit 0
+                else
+                  echo "  旧实例 Running 但 DeployedTime 未更新，继续等待本次构建"
+                fi ;;
             esac
             sleep 30
           done
-
-          echo "== step3: 拉构建日志尾部（便于定位）=="
-          curl -sS -H "Authorization: Bearer ${MS_TOKEN}" "${API}/logs/build" | tail -120
-          exit 1
+          echo "TIMEOUT：30 分钟内未见新构建产物上线"; exit 1
