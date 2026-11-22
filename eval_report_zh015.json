@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-11-22T22:24:07.255155",
+  "thresholds_used": {
+    "default": 0.3,
+    "en": 0.3,
+    "zh": 0.15
+  },
+  "en": {
+    "answerable_count": 50,
+    "unanswerable_count": 20,
+    "coarse_recall_at_4": 0.54,
+    "coarse_recall_at_5": 0.6,
+    "coarse_mrr_at_4": 0.345,
+    "coarse_mrr_at_5": 0.357,
+    "coarse_mrr_at_20": 0.3859,
+    "fine_recall_at_4": 0.64,
+    "fine_recall_at_5": 0.64,
+    "fine_mrr_at_4": 0.4283,
+    "fine_mrr_at_5": 0.4283,
+    "fine_mrr_at_20": 0.4519,
+    "refusal_accuracy": 0.6,
+    "refusal_accuracy_by_category": {
+      "unrelated": 0.75,
+      "semi_related": 0.5,
+      "counterfactual": 0.5
+    },
+    "diagnostics": {
+      "coarse_recall_at_20": 0.88,
+      "fine_recall_at_20_gold_given": 1.0,
+      "false_reject_rate": 0.18,
+      "n_fine_scored": 50,
+      "coarse_rank_histogram": {
+        "1": 11,
+        "2": 7,
+        "3": 6,
+        "4": 3,
+        "5": 3,
+        "6-10": 7,
+        "11-20": 7,
+        "miss": 6
+      },
+      "fine_rank_histogram": {
+        "1": 15,
+        "2": 6,
+        "3": 8,
+        "4": 3,
+        "5": 0,
+        "6-10": 6,
+        "11-20": 6,
+        "miss": 6
+      }
+    }
+  },
+  "zh": {
+    "answerable_count": 50,
+    "unanswerable_count": 20,
+    "coarse_recall_at_4": 0.22,
+    "coarse_recall_at_5": 0.24,
+    "coarse_mrr_at_4": 0.1233,
+    "coarse_mrr_at_5": 0.1273,
+    "coarse_mrr_at_20": 0.1796,
+    "fine_recall_at_4": 0.5,
+    "fine_recall_at_5": 0.52,
+    "fine_mrr_at_4": 0.3983,
+    "fine_mrr_at_5": 0.4023,
+    "fine_mrr_at_20": 0.4312,
+    "refusal_accuracy": 0.65,
+    "refusal_accuracy_by_category": {
+      "unrelated": 1.0,
+      "semi_related": 0.375,
+      "counterfactual": 0.5
+    },
+    "diagnostics": {
+      "coarse_recall_at_20": 0.74,
+      "fine_recall_at_20_gold_given": 1.0,
+      "false_reject_rate": 0.32,
+      "n_fine_scored": 50,
+      "coarse_rank_histogram": {
+        "1": 3,
+        "2": 3,
+        "3": 5,
+        "4": 0,
+        "5": 1,
+        "6-10": 14,
+        "11-20": 11,
+        "miss": 13
+      },
+      "fine_rank_histogram": {
+        "1": 16,
+        "2": 6,
+        "3": 2,
+        "4": 1,
+        "5": 1,
+        "6-10": 9,
+        "11-20": 2,
+        "miss": 13
+      }
+    }
+  },
+  "_derived_from": "eval_details.json（同一次遍历，阈值离线重算）"
+}
