@@ -112,11 +112,7 @@ jobs:
           rm -rf ./*
           cp -r /tmp/source_code/* .
           
-          # 5. 【修复】打破缓存，先清理 requirements 里的乱码和空行，再追加注释
-          # 删除所有只包含空白字符的行
-          sed -i '/^[[:space:]]*$/d' requirements.txt
-          # 强制在末尾加一个换行符，再追加注释，防止 `modelscope#` 粘连
-          echo "" >> requirements.txt
+          # 5. 打破构建缓存：只追加一行触发注释（requirements 已无乱码与多余空行，无需再清理）
           echo "# rebuild trigger $(date +%s)" >> requirements.txt
           
           git add -A
